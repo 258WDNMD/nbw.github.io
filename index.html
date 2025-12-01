@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>nbw</title>
+	<style>
+		/* 样式：居中显示+背景色+按钮样式 */
+		body {
+			font-family: "微软雅黑", sans-serif;
+			text-align: center;
+			background-color: #f0f8ff; /* 浅蓝背景 */
+			margin: 0;
+			padding: 50px;
+		}
+
+		h1 {
+			color: #333; /* 标题颜色 */
+			font-size: 2.5em;
+		}
+
+		p {
+			color: #666; /* 文字颜色 */
+			font-size: 1.2em;
+			margin-bottom: 30px;
+		}
+
+		button {
+			padding: 15px 30px;
+			font-size: 1.1em;
+			background-color: #42b983; /* 按钮颜色（Vue绿） */
+			color: white;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer; /* 鼠标指针变为手型 */
+		}
+
+			button:hover {
+				background-color: #3aa876; /* 按钮 hover 颜色（加深） */
+			}
+	</style>
+</head>
+<body>
+	<h1>Welcome to nbw! </h1>
+	<p>我们是世界上最好的小团体！</p>
+	<button onclick="showMessage()">点击我</button>
+	<script>
+		// JavaScript：点击按钮弹出提示
+		function showMessage() {
+			alert("你的老冯似掉了！");
+		}
+	</script>
+</body>
+</html>
