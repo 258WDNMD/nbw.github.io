@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>照片展示页</title>
+	<style>
+		/* 页面基础样式（可选） */
+		body {
+			margin: 20px;
+			font-family: Arial, sans-serif;
+		}
+
+		h1 {
+			text-align: center;
+			margin-bottom: 20px;
+		}
+
+		/* 照片容器：Flex 布局实现自动换行 */
+		.photo-gallery {
+			display: flex;
+			flex-wrap: wrap; /* 超出宽度时自动换行 */
+			gap: 15px; /* 图片之间的间距 */
+			justify-content: center; /* 水平居中 */
+		}
+
+			/* 单张照片样式 */
+			.photo-gallery img {
+				width: 200px; /* 固定宽度（也可设为百分比） */
+				height: auto; /* 高度自适应，避免变形 */
+				border-radius: 8px; /* 圆角（可选） */
+				box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* 阴影（可选） */
+			}
+	</style>
+</head>
+<body>
+	<h1>我的照片合集</h1>
+
+	<!-- 照片容器：放入所有要展示的图片 -->
+	<div class="photo-gallery">
+		<img src="images/photo1.jpg" alt="照片1描述">
+		<img src="images/photo2.jpg" alt="照片2描述">
+		<img src="images/photo3.jpg" alt="照片3描述">
+		<!-- 继续添加更多 <img> 标签... -->
+	</div>
+</body>
+</html>
