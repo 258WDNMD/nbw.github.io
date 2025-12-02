@@ -1,0 +1,145 @@
+/* 全局重置：简化默认样式 */
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+body {
+	font-family: "Helvetica Neue", Arial, sans-serif;
+	background-color: #f5f7fa;
+	color: #333;
+}
+
+/* 容器：侧边栏 + 内容区 横向布局 */
+.container {
+	display: flex;
+	min-height: 100vh; /* 页面占满视口高度 */
+}
+
+/* 左侧侧边栏 */
+.sidebar {
+	width: 220px;
+	background-color: #fff;
+	padding: 24px;
+	box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+	transition: all 0.3s ease;
+}
+
+	.sidebar h1 {
+		font-size: 20px;
+		color: #646cff;
+		margin-bottom: 8px;
+	}
+
+	.sidebar .subtitle {
+		font-size: 14px;
+		color: #666;
+		margin-bottom: 24px;
+	}
+
+	.sidebar ul {
+		list-style: none; /* 清除默认列表样式 */
+	}
+
+	/* 菜单项基础样式 + hover 动画 */
+	.sidebar li {
+		padding: 12px 16px;
+		margin: 8px 0;
+		cursor: pointer;
+		border-radius: 6px;
+		transition: all 0.3s ease; /* 所有属性变化加过渡，实现平滑动画 */
+		transform-origin: left center; /* 缩放基准点：从左侧中间开始放大 */
+		font-size: 16px;
+		color: #333;
+	}
+
+		/* hover 时的视觉反馈：放大 + 背景色 + 阴影 + 文字色 */
+		.sidebar li:hover {
+			transform: scale(1.05); /* 放大 5% */
+			background-color: #f0f4ff;
+			box-shadow: 0 2px 6px rgba(100, 108, 255, 0.1);
+			color: #5c5cff;
+		}
+
+		/* 激活态样式（点击后保持高亮） */
+		.sidebar li.active {
+			background-color: #eef2ff;
+			color: #646cff;
+			box-shadow: inset 0 0 0 2px #646cff; /* 内部边框强调选中 */
+		}
+
+/* 右侧内容区 */
+.content {
+	flex: 1; /* 占满剩余宽度 */
+	padding: 24px;
+	background-color: #fff;
+	box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 内容模块基础样式 + 过渡动画核心 */
+.content-section {
+	position: relative;
+	opacity: 0; /* 默认隐藏（透明度 0） */
+	transform: translateX(20px); /* 默认右移 20px */
+	transition: all 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* 自定义缓动曲线，更丝滑 */
+	height: auto; /* 固定高度防止塌陷（根据内容调整） */
+	overflow: hidden;
+}
+
+	/* 👇 进入动画：从左侧滑入 + 淡入 */
+	.content-section.enter-active {
+		opacity: 1;
+		transform: translateX(0);
+	}
+
+	/* 👇 离开动画：向右滑出 + 淡出 */
+	.content-section.leave-active {
+		opacity: 0;
+		transform: translateX(20px);
+	}
+
+	/* 内容模块内的文字样式 */
+	.content-section h2 {
+		font-size: 18px;
+		color: #333;
+		margin-bottom: 12px;
+	}
+
+	.content-section p {
+		line-height: 1.6;
+		color: #666;
+	}
+/* 分割线核心样式 */
+.sidebar {
+	position: relative;
+	border-right: 2px solid #e0e0e0;
+	padding-right: 30px;
+}
+
+	.sidebar::after {
+		content: '';
+		position: absolute;
+		right: -1px;
+		top: 20px;
+		bottom: 20px;
+		width: 2px;
+		background: #646cff;
+		opacity: 30%;
+	}
+
+.content {
+	padding-left: 40px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+	.sidebar {
+		border-right: none;
+		padding-right: 0;
+	}
+
+	.content {
+		padding-left: 20px;
+	}
+}
