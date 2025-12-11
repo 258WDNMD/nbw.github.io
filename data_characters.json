@@ -1,0 +1,67 @@
+{
+  "characters": [
+    {
+      "id": "li_shuobo",
+      "name": "李硕博",
+      "alias": "你",
+      "role": "主角 · 普通到几乎透明的“工具人”",
+      "tagline": "“如果把一切都当成选项，也许就没那么难了。”",
+      "themeColor": "#38bdf8",
+      "affinity": 0
+    },
+    {
+      "id": "li_guangfan",
+      "name": "李广凡",
+      "alias": "广凡",
+      "role": "理工科卷王 · 宿舍“老母亲”",
+      "tagline": "永远在为所有人规划最优解，却忘了问自己想要什么。",
+      "themeColor": "#a855f7",
+      "affinity": 40
+    },
+    {
+      "id": "chen_haotian",
+      "name": "陈昊天",
+      "alias": "昊天",
+      "role": "才华横溢的社团部长",
+      "tagline": "他总是站在光里，于是你习惯站在他的影子边缘。",
+      "themeColor": "#f97316",
+      "affinity": 30
+    },
+    {
+      "id": "du_decheng",
+      "name": "杜德程",
+      "alias": "老杜",
+      "role": "摆烂哲学家 · 宿舍抽象担当",
+      "tagline": "“人生是抽卡，能苟一把就别退坑。”",
+      "themeColor": "#22c55e",
+      "affinity": 25
+    },
+    {
+      "id": "ma_yuechang",
+      "name": "马曰昌",
+      "alias": "阿昌",
+      "role": "电竞菜鸡 · 情绪却总是满格",
+      "tagline": "输了比赛可以再来一把，错过的人却没法重开。",
+      "themeColor": "#facc15",
+      "affinity": 20
+    },
+    {
+      "id": "jiang_dekang",
+      "name": "蒋德康",
+      "alias": "德康",
+      "role": "学生会执行委员 · 完美主义者",
+      "tagline": "他把日程表排得满满当当，只怕给自己留出思考的空隙。",
+      "themeColor": "#6366f1",
+      "affinity": 10
+    },
+    {
+      "id": "jiang_yuechao",
+      "name": "姜月超",
+      "alias": "月超",
+      "role": "创作型音乐人 · 校园乐队主唱",
+      "tagline": "“如果你听懂了，那这首歌就算写完了。”",
+      "themeColor": "#ec4899",
+      "affinity": 35
+    }
+  ]
+}

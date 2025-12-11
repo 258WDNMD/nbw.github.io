@@ -1,0 +1,21 @@
+#right-panel.collapsed {
+  display: none;
+}
+
+body.reduced-motion * {
+  scroll-behavior: auto !important;
+  transition: none !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.fade-in-up-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.18s ease-out;
+}

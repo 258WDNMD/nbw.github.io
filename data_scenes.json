@@ -1,0 +1,253 @@
+{
+  "entryScene": "prologue_rooftop",
+  "scenes": {
+    "prologue_rooftop": {
+      "title": "序章 · 夜色将至",
+      "subtitle": "第一晚 · 天台与霓光",
+      "nodes": [
+        {
+          "id": "p0",
+          "speaker": "li_shuobo",
+          "text": "操场的灯一点点灭掉，只有教学楼顶的霓虹牌还在倔强地亮着。你站在天台的围栏边上，手机屏幕被冷风吹得发凉。",
+          "choices": []
+        },
+        {
+          "id": "p1",
+          "speaker": "li_guangfan",
+          "text": "“李硕博，你又在想要不要退社？”李广凡端着两杯奶茶走过来，把其中一杯塞进你手里。",
+          "choices": []
+        },
+        {
+          "id": "p2",
+          "speaker": "li_shuobo",
+          "text": "“你怎么知道？”你下意识接过，杯壁的温度透过指尖，让你突然有点不敢说出口的那些话变得真实起来。",
+          "choices": [
+            {
+              "id": "c1",
+              "label": "开玩笑岔开话题",
+              "next": "p3_joke",
+              "affinityChange": { "li_guangfan": 2 }
+            },
+            {
+              "id": "c2",
+              "label": "认真承认自己的动摇",
+              "next": "p3_honest",
+              "affinityChange": { "li_guangfan": 5 }
+            }
+          ]
+        },
+        {
+          "id": "p3_joke",
+          "speaker": "li_shuobo",
+          "text": "“我在想今晚吃什么。”你抬起头，尽量让语气听起来轻松，“退社这种事，至少得让你先退。”",
+          "choices": []
+        },
+        {
+          "id": "p4_gf_joke",
+          "speaker": "li_guangfan",
+          "text": "李广凡失笑：“行啊，你先把今天拉下来的策划案补完，我再考虑让你退。”他顿了顿，语气慢慢沉下来，“但你知道，我问的不是这个。”",
+          "choices": []
+        },
+        {
+          "id": "p3_honest",
+          "speaker": "li_shuobo",
+          "text": "“……是。”你喉结滑动了一下，“我好像从来没赢过他们一次，不在舞台上，也不在选择里。”",
+          "choices": []
+        },
+        {
+          "id": "p4_gf_honest",
+          "speaker": "li_guangfan",
+          "text": "“那你非得赢一次才算活过吗？”李广凡靠在围栏上，霓光在他镜片上晃了一下，“你以为我想当什么‘卷王’啊？”",
+          "choices": [
+            {
+              "id": "c3",
+              "label": "反问他为什么这么拼",
+              "next": "p5_gf_reason",
+              "affinityChange": { "li_guangfan": 3 }
+            },
+            {
+              "id": "c4",
+              "label": "把话题转向别人",
+              "next": "p5_about_others",
+              "affinityChange": { "li_guangfan": 1 }
+            }
+          ]
+        },
+        {
+          "id": "p5_gf_reason",
+          "speaker": "li_shuobo",
+          "text": "“那你为什么要这么拼？”你问出口的时候才发现，原来你一直没真正问过这个问题。",
+          "choices": []
+        },
+        {
+          "id": "p6_gf_reason",
+          "speaker": "li_guangfan",
+          "text": "“因为我不想被别人替我做选择。”他笑了笑，“我卷的不是成绩，是主动权。”",
+          "choices": []
+        },
+        {
+          "id": "p5_about_others",
+          "speaker": "li_shuobo",
+          "text": "“那昊天他们呢？他们看起来总是知道自己在干嘛。”你把视线从他身上移开，朝远处操场看去。",
+          "choices": []
+        },
+        {
+          "id": "p6_about_others",
+          "speaker": "li_guangfan",
+          "text": "“陈昊天？他只是看起来知道。”李广凡偏过头，“你以为他为什么要办那么多活动，什么都往身上揽？”",
+          "choices": [
+            {
+              "id": "c5",
+              "label": "继续听他说下去",
+              "next": "p7_rooftop_wrap",
+              "affinityChange": {}
+            }
+          ]
+        },
+        {
+          "id": "p7_rooftop_wrap",
+          "speaker": "li_shuobo",
+          "text": "风从天台另一侧绕过来，把你的话都吹回了嗓子眼。你突然意识到，这不仅仅是要不要退社的问题，而是——接下来的每一个选择，都会把你推向不同的人。",
+          "choices": [
+            {
+              "id": "c6",
+              "label": "答应留下，再坚持一段时间",
+              "nextScene": "clubroom_night",
+              "affinityChange": { "li_guangfan": 5, "chen_haotian": 2 }
+            },
+            {
+              "id": "c7",
+              "label": "提出暂时退出，把精力留给自己",
+              "nextScene": "dorm_late",
+              "affinityChange": { "du_decheng": 3, "ma_yuechang": 2 }
+            }
+          ]
+        }
+      ]
+    },
+    "clubroom_night": {
+      "title": "第一章 · 残页与排练",
+      "subtitle": "社团活动室 · 深夜",
+      "nodes": [
+        {
+          "id": "c0",
+          "speaker": "chen_haotian",
+          "text": "“我就知道你会来。”陈昊天从一堆乐谱后面探出头来，冲你晃了晃手里的记号笔，“今晚帮我看个排练流程？”",
+          "choices": []
+        },
+        {
+          "id": "c1",
+          "speaker": "jiang_yuechao",
+          "text": "姜月超正坐在角落，吉他横在腿上，指尖轻轻敲着音板：“如果你觉得哪里别扭，就直接说。歌是给你们听的，不是给我自己听。”",
+          "choices": [
+            {
+              "id": "c8",
+              "label": "认真指出问题",
+              "next": "c2_feedback",
+              "affinityChange": { "jiang_yuechao": 4, "chen_haotian": 2 }
+            },
+            {
+              "id": "c9",
+              "label": "只夸好听，什么都不说",
+              "next": "c2_safe",
+              "affinityChange": { "jiang_yuechao": 1 }
+            }
+          ]
+        },
+        {
+          "id": "c2_feedback",
+          "speaker": "li_shuobo",
+          "text": "“副歌那句‘霓光把名字擦掉’，节奏再往后一点，会不会更像是被拖着走？”你试着把脑子里混乱的感觉翻译成词。",
+          "choices": []
+        },
+        {
+          "id": "c3_feedback",
+          "speaker": "jiang_yuechao",
+          "text": "姜月超愣了一下，随即笑起来：“原来你有在听啊。”他低头拨了一下弦，“那这首，就算写给你们好了。”",
+          "choices": []
+        },
+        {
+          "id": "c2_safe",
+          "speaker": "li_shuobo",
+          "text": "“挺好听的，已经很好了。”你说完这句，才意识到这句话听起来多么安全——安全到几乎没有存在感。",
+          "choices": []
+        },
+        {
+          "id": "c3_safe",
+          "speaker": "chen_haotian",
+          "text": "“别这么敷衍啊。”陈昊天笑着敲了敲你的额头，“你在我们这儿，是有投票权的。”",
+          "choices": [
+            {
+              "id": "c10",
+              "label": "接受这份“投票权”",
+              "nextScene": "clubroom_deep",
+              "affinityChange": { "chen_haotian": 4, "jiang_yuechao": 2 }
+            }
+          ]
+        }
+      ]
+    },
+    "dorm_late": {
+      "title": "第一章 · 微光的房间",
+      "subtitle": "宿舍 · 凌晨",
+      "nodes": [
+        {
+          "id": "d0",
+          "speaker": "du_decheng",
+          "text": "“退社？退得好啊兄弟。”杜德程一边敲着键盘，一边给你扔了一包薯片，“欢迎加入摆烂联盟。”",
+          "choices": []
+        },
+        {
+          "id": "d1",
+          "speaker": "ma_yuechang",
+          "text": "“别听他瞎说。”马曰昌把耳机摘下半只，“只是换个地图而已。说不定，你在别的地方就是主 C 了。”",
+          "choices": [
+            {
+              "id": "c11",
+              "label": "问他们会不会觉得你怂",
+              "next": "d2_afraid",
+              "affinityChange": { "ma_yuechang": 3 }
+            },
+            {
+              "id": "c12",
+              "label": "试着放空，什么都不想",
+              "next": "d2_empty",
+              "affinityChange": { "du_decheng": 2 }
+            }
+          ]
+        },
+        {
+          "id": "d2_afraid",
+          "speaker": "li_shuobo",
+          "text": "“你们会不会觉得我很怂？”你盯着天花板，灯光在上面晃出一圈圈暗影。",
+          "choices": []
+        },
+        {
+          "id": "d3_afraid",
+          "speaker": "ma_yuechang",
+          "text": "“怂就怂呗。”马曰昌歪过头看你，“谁规定主角不能是个胆小鬼了？”",
+          "choices": []
+        },
+        {
+          "id": "d2_empty",
+          "speaker": "li_shuobo",
+          "text": "你把手机扣在桌上，仰躺在床上，试着什么都不去想。可是脑子越空，越是会浮出那些没有做完的选择。",
+          "choices": []
+        },
+        {
+          "id": "d3_empty",
+          "speaker": "du_decheng",
+          "text": "杜德程从上铺探下头来：“要不这样，你把这当成新周目的第一天。之前全是新手教程，懂？”",
+          "choices": [
+            {
+              "id": "c13",
+              "label": "把“新周目”当真",
+              "nextScene": "campus_morning",
+              "affinityChange": { "du_decheng": 3, "ma_yuechang": 2 }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

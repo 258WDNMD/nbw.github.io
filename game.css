@@ -1,0 +1,26 @@
+.scene-character-card-muted {
+  opacity: 0.45;
+  filter: grayscale(0.1);
+}
+
+.scene-character-card-focus {
+  opacity: 1;
+  filter: none;
+}
+
+.choice-btn-primary {
+  border-color: rgba(56, 189, 248, 0.9);
+  background: radial-gradient(circle at top, rgba(56, 189, 248, 0.18), rgba(15, 23, 42, 0.98));
+}
+
+.affinity-positive {
+  color: #6ee7b7;
+}
+
+.affinity-negative {
+  color: #f97373;
+}
+
+.system-log-highlight {
+  color: #38bdf8;
+}
