@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <title>霓光交汇 · Galgame Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <link rel="stylesheet" href="main.css">
+  <link rel="stylesheet" href="ui.css">
+  <link rel="stylesheet" href="game.css">
+</head>
+<body class="h-full bg-slate-950 text-slate-100 antialiased">
+  <div id="app" class="h-full flex flex-col">
+    <header class="app-header border-b border-slate-800">
+      <div class="header-left">
+        <div class="logo-mark">霓</div>
+        <div class="logo-text">
+          <div class="logo-title">霓光交汇</div>
+          <div class="logo-subtitle">校园群像 · Galgame 原型</div>
+        </div>
+      </div>
+      <div class="header-center">
+        <button id="tab-story" class="header-tab header-tab-active">故事</button>
+        <button id="tab-characters" class="header-tab">角色</button>
+        <button id="tab-analytics" class="header-tab">关系图</button>
+      </div>
+      <div class="header-right">
+        <button id="btn-load" class="header-icon-btn" title="读档">
+          <i data-lucide="folder-open"></i>
+        </button>
+        <button id="btn-save" class="header-icon-btn" title="存档">
+          <i data-lucide="save"></i>
+        </button>
+        <button id="btn-ai" class="header-pill-btn">
+          <i data-lucide="sparkles" class="mr-1.5 h-4 w-4"></i>
+          联机续写
+        </button>
+        <button id="btn-toggle-right" class="header-icon-btn" title="切换右侧面板">
+          <i data-lucide="layout-dashboard"></i>
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+      <section id="left-panel" class="left-panel">
+        <div id="scene-stage" class="scene-stage">
+          <div class="scene-bg"></div>
+          <div id="scene-characters" class="scene-characters"></div>
+          <div class="scene-overlay-top">
+            <div id="scene-title" class="scene-title">序章 · 夜色将至</div>
+            <div id="scene-subtitle" class="scene-subtitle">第一晚 · 天台与霓光</div>
+          </div>
+        </div>
+
+        <div id="dialogue-panel" class="dialogue-panel">
+          <div class="dialogue-header">
+            <div class="dialogue-speaker">
+              <span id="dialogue-speaker-name">？？？</span>
+            </div>
+            <div class="dialogue-meta">
+              <span id="dialogue-scene-label">序章 01</span>
+              <span class="dot-sep">·</span>
+              <span id="dialogue-line-index">0 / 0</span>
+            </div>
+          </div>
+          <div id="dialogue-text" class="dialogue-text">
+            载入中……
+          </div>
+          <div id="dialogue-ai-suggestion" class="dialogue-ai hidden"></div>
+          <div class="dialogue-footer">
+            <div id="choice-container" class="choice-container hidden"></div>
+            <div class="dialogue-controls">
+              <button id="btn-log" class="dialogue-ctrl-btn">
+                <i data-lucide="list"></i>
+                剧情记录
+              </button>
+              <button id="btn-auto" class="dialogue-ctrl-btn">
+                <i data-lucide="bot"></i>
+                自动
+              </button>
+              <button id="btn-skip" class="dialogue-ctrl-btn">
+                <i data-lucide="fast-forward"></i>
+                跳过
+              </button>
+              <button id="btn-next" class="dialogue-main-btn">
+                下一句
+                <i data-lucide="chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-characters-view" class="characters-view hidden">
+          <div class="characters-grid" id="characters-grid"></div>
+        </div>
+      </section>
+
+      <aside id="right-panel" class="right-panel border-l border-slate-800">
+        <div class="right-section">
+          <div class="right-section-header">
+            <div class="right-title">好感度</div>
+            <div class="right-subtitle">与你之间的距离</div>
+          </div>
+          <canvas id="affinity-chart" class="w-full h-40"></canvas>
+        </div>
+
+        <div class="right-section">
+          <div class="right-section-header">
+            <div class="right-title">当前分支</div>
+            <div class="right-subtitle">你的每一个选择都在改变故事</div>
+          </div>
+          <div id="branch-summary" class="branch-summary">
+            暂无分支信息。
+          </div>
+        </div>
+
+        <div class="right-section">
+          <div class="right-section-header">
+            <div class="right-title">系统消息</div>
+          </div>
+          <div id="system-log" class="system-log"></div>
+        </div>
+      </aside>
+    </main>
+
+    <div id="save-modal" class="modal-backdrop hidden">
+      <div class="modal-panel">
+        <div class="modal-header">
+          <div class="modal-title">存档管理</div>
+          <button id="btn-close-save" class="header-icon-btn">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div id="save-list" class="save-list"></div>
+        <div class="modal-footer">
+          <button id="btn-new-save" class="primary-btn w-full">
+            新建存档
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="log-modal" class="modal-backdrop hidden">
+      <div class="modal-panel log-modal-panel">
+        <div class="modal-header">
+          <div class="modal-title">剧情记录</div>
+          <button id="btn-close-log" class="header-icon-btn">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div id="log-content" class="log-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      if (window.lucide && window.lucide.createIcons) {
+        window.lucide.createIcons();
+      }
+    });
+  </script>
+</body>
+</html>
