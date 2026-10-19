@@ -1,170 +1,4019 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="h-full">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <title>霓光交汇 · Galgame Demo</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
-  <link rel="stylesheet" href="main.css">
-  <link rel="stylesheet" href="ui.css">
-  <link rel="stylesheet" href="game.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="AI 长篇小说创作台：架构、大纲、正文、改稿、摘要、导出，全部在本机浏览器完成，API Key 只存在你自己的浏览器里。">
+<title>AI 小说创作台</title>
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#ffffff; --panel-2:#f4f2ee; --line:#e2ded6;
+    --line-strong:#cdc7bc; --ink:#20201e; --ink-2:#5b5953; --ink-3:#8b8880;
+    --accent:#534AB7; --accent-soft:#EEEDFE;
+    --blue:#185FA5; --blue-soft:#E6F1FB;
+    --amber:#BA7517; --amber-soft:#FAEEDA;
+    --coral:#D85A30; --coral-soft:#FAECE7;
+    --teal:#0F6E56; --teal-soft:#E1F5EE;
+    --red:#A32D2D; --red-soft:#FCEBEB;
+    --radius:10px; --radius-lg:14px;
+    --font:"PingFang SC","Microsoft YaHei","Hiragino Sans GB",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --serif:"Songti SC","SimSun",Georgia,serif;
+    --mono:ui-monospace,Consolas,"Courier New",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.7;-webkit-font-smoothing:antialiased}
+  button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+  svg{flex:none}
+  .app{display:flex;min-height:100vh}
+
+  /* 侧栏 */
+  .sidebar{width:212px;flex:none;background:var(--panel);border-right:1px solid var(--line);
+    padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .brand{padding:0 8px 15px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  .brand h1{font-size:16px;font-weight:500;letter-spacing:.5px}
+  .brand p{font-size:11px;color:var(--ink-3);margin-top:3px}
+  .nav{display:flex;flex-direction:column;gap:2px}
+  .nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
+    cursor:pointer;color:var(--ink-2);font-size:13px;border:none;background:none;text-align:left;width:100%}
+  .nav-item:hover{background:var(--panel-2)}
+  .nav-item.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+  .nav-group{font-size:11px;color:var(--ink-3);padding:13px 10px 5px;letter-spacing:.8px}
+  .side-foot{padding:12px 10px 4px;border-top:1px solid var(--line);margin-top:12px;
+    font-size:11px;color:var(--ink-3);line-height:1.8}
+  .dot{display:inline-block;width:6px;height:6px;border-radius:99px;background:var(--line-strong);margin-right:4px}
+  .dot.ok{background:var(--teal)} .dot.bad{background:var(--red)}
+
+  /* 主区 */
+  .main{flex:1;min-width:0;padding:24px 30px 90px;max-width:1200px}
+  .view-head{margin-bottom:18px}
+  .view-head h2{font-size:20px;font-weight:500}
+  .view-head p{color:var(--ink-2);font-size:13px;margin-top:4px;max-width:78ch}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);
+    padding:16px 18px;margin-bottom:13px}
+  .card-t{font-size:14px;font-weight:500;margin-bottom:11px;display:flex;align-items:center;
+    justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .card-t .hint{font-size:11px;color:var(--ink-3);font-weight:400}
+
+  label.f{display:block;font-size:12px;color:var(--ink-2);margin-bottom:5px}
+  input[type=text],input[type=number],input[type=password],textarea,select{
+    width:100%;background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:8px 10px;outline:none;line-height:1.7;transition:border-color .12s,box-shadow .12s}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  textarea{resize:vertical;font-family:inherit}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .field{margin-bottom:12px}.field:last-child{margin-bottom:0}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;
+    border:1px solid var(--line-strong);background:var(--panel);cursor:pointer;font-size:13px;
+    transition:background .12s}
+  .btn:hover{background:var(--panel-2)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover:not(:disabled){background:#453CA0}
+  .btn.sm{padding:5px 10px;font-size:12px}
+  .btn.danger{color:var(--red);border-color:#e8c4c4}
+  .btn.danger:hover{background:var(--red-soft)}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);padding:13px 15px}
+  .stat .n{font-size:25px;font-weight:500;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:11px;color:var(--ink-3);margin-top:2px}
+  .bar{height:6px;background:var(--panel-2);border-radius:99px;overflow:hidden;margin-top:9px}
+  .bar>i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+
+  .fac{border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:10px;
+    padding:12px 14px;background:var(--panel);margin-bottom:9px}
+  .fac .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px}
+  .fac .nm{font-size:14px;font-weight:500}
+  .tag{font-size:11px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+  .fac .claim{font-size:13px;margin-bottom:5px}
+  .fac .proto{font-size:12px;color:var(--ink-3)}
+  .f-inherit{border-left-color:var(--accent)}.f-inherit .tag{background:var(--accent-soft);color:var(--accent)}
+  .f-witness{border-left-color:var(--blue)}.f-witness .tag{background:var(--blue-soft);color:var(--blue)}
+  .f-corp{border-left-color:var(--teal)}.f-corp .tag{background:var(--teal-soft);color:var(--teal)}
+  .f-acad{border-left-color:var(--amber)}.f-acad .tag{background:var(--amber-soft);color:var(--amber)}
+  .f-debunk{border-left-color:var(--coral)}.f-debunk .tag{background:var(--coral-soft);color:var(--coral)}
+
+  .item{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:9px}
+  .item-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+  .item-h .t{font-size:13px;font-weight:500;color:var(--ink-2)}
+  .empty{padding:32px 18px;text-align:center;color:var(--ink-3);font-size:13px;
+    border:1px dashed var(--line-strong);border-radius:var(--radius-lg);background:var(--panel)}
+
+  .ch{display:grid;grid-template-columns:48px 1fr 118px 88px 32px;gap:8px;align-items:center;
+    padding:7px 9px;border-radius:8px}
+  .ch:hover{background:var(--panel-2)}
+  .ch.head{font-size:11px;color:var(--ink-3);border-bottom:1px solid var(--line);border-radius:0;padding-bottom:8px}
+  .ch .no{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+  .ch input,.ch select{padding:5px 8px;font-size:13px;background:transparent;border-color:transparent}
+  .ch input:hover,.ch select:hover{border-color:var(--line)}
+  .ch input:focus,.ch select:focus{background:var(--panel)}
+  .chip{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--panel-2);color:var(--ink-2);white-space:nowrap}
+  .chip.done{background:var(--teal-soft);color:var(--teal)}
+  .chip.draft{background:var(--amber-soft);color:var(--amber)}
+  .icon-btn{border:none;background:none;cursor:pointer;color:var(--ink-3);padding:4px;border-radius:6px;font-size:16px;line-height:1}
+  .icon-btn:hover{background:var(--red-soft);color:var(--red)}
+
+  .mat{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;border:1px solid var(--line);
+    border-radius:10px;background:var(--panel);margin-bottom:8px}
+  .mat .ico{width:34px;height:34px;flex:none;border-radius:8px;display:grid;place-items:center;font-size:10px;font-weight:500}
+  .mat.pdf .ico{background:var(--red-soft);color:var(--red)}
+  .mat.txt .ico{background:var(--blue-soft);color:var(--blue)}
+  .mat .body{flex:1;min-width:0}
+  .mat .nm{font-size:13px;font-weight:500;margin-bottom:2px}
+  .mat .ds{font-size:12px;color:var(--ink-2);line-height:1.6;margin-bottom:4px}
+  .mat .pt{font-size:11px;color:var(--ink-3);font-family:var(--mono);overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  .mat .act{display:flex;gap:6px;flex:none}
+  .pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;
+    background:var(--panel-2);color:var(--ink-2);margin-right:5px}
+  .tabs{display:flex;gap:4px;margin-bottom:13px;border-bottom:1px solid var(--line)}
+  .tab{padding:8px 14px;border:none;background:none;cursor:pointer;font-size:13px;color:var(--ink-2);
+    border-bottom:2px solid transparent;margin-bottom:-1px}
+  .tab.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+
+  /* 题材筛选 */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px}
+  .chip{font:inherit;font-size:12px;padding:4px 11px;border:1px solid var(--line);
+    background:var(--panel);border-radius:99px;cursor:pointer;color:var(--ink-2);transition:.15s}
+  .chip:hover{border-color:var(--line-strong);color:var(--ink)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip .num{opacity:.6;font-size:10.5px;margin-left:3px}
+  .chip.on .num{opacity:.8}
+  .chip .you{opacity:.85;font-size:10px;margin-left:2px}
+  .libcount{font-size:11.5px;color:var(--ink-3);margin-bottom:9px}
+
+  /* 写作区 */
+  .ms{width:100%;min-height:56vh;border:1px solid var(--line);border-radius:var(--radius-lg);
+    padding:24px 28px;font-family:var(--serif);font-size:16px;line-height:2;background:var(--panel);resize:vertical}
+  .ms:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .ai-out{border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--panel);
+    padding:20px 24px;font-family:var(--serif);font-size:15px;line-height:2;white-space:pre-wrap;
+    max-height:52vh;overflow-y:auto;margin-top:12px}
+  .ai-out:empty{display:none}
+  .ai-meta{font-size:11px;color:var(--ink-3);margin-top:8px;display:flex;gap:12px;flex-wrap:wrap}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--accent);
+    border-top-color:transparent;border-radius:99px;animation:sp .7s linear infinite;vertical-align:-1px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .logbox{font-family:var(--mono);font-size:11.5px;line-height:1.75;background:var(--panel-2);
+    border-radius:8px;padding:10px 12px;max-height:150px;overflow-y:auto;color:var(--ink-2);white-space:pre-wrap}
+  .logbox:empty{display:none}
+  .alert{padding:10px 13px;border-radius:9px;font-size:12.5px;line-height:1.7;margin-bottom:12px}
+  .alert.warn{background:var(--amber-soft);color:#7a4f0a;border:1px solid #eed9a8}
+  .alert.err{background:var(--red-soft);color:var(--red);border:1px solid #eec4c4}
+  .alert.ok{background:var(--teal-soft);color:var(--teal);border:1px solid #9fd8c4}
+  .alert code{font-family:var(--mono);font-size:11.5px;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:4px}
+
+  .toast{position:fixed;right:22px;bottom:22px;background:var(--ink);color:#fff;padding:9px 16px;
+    border-radius:9px;font-size:12px;opacity:0;transform:translateY(8px);pointer-events:none;
+    transition:opacity .2s,transform .2s;z-index:99}
+  .toast.on{opacity:1;transform:none}
+  .sv{font-size:9px;vertical-align:1.5px;color:var(--ink-3);margin-right:3px}
+  .sv.ok{color:var(--teal)} .sv.wait{color:var(--amber)} .sv.bad{color:var(--red)}
+  .banner{position:fixed;top:0;left:0;right:0;z-index:120;background:var(--red-soft);
+    color:var(--red);border-bottom:1px solid #efc7c7;padding:9px 18px;font-size:12.5px;
+    line-height:1.65}
+  .banner b{font-weight:600}
+  .savenote{font-size:11.5px;color:var(--ink-3);line-height:1.85;margin-top:9px}
+  .savenote code{font-family:var(--mono);font-size:11px;background:var(--panel-2);
+    padding:1px 5px;border-radius:5px;color:var(--ink-2)}
+  .quote{border-left:3px solid var(--line-strong);padding:2px 0 2px 14px;color:var(--ink-2);
+    font-family:var(--serif);font-size:14px;line-height:1.9;margin:8px 0}
+
+  /* 修订标记：红色=删去，绿色=增添 */
+  .diff-del{background:#FCEBEB;color:#A32D2D;text-decoration:line-through;
+    text-decoration-color:#E24B4A;border-radius:2px}
+  .diff-ins{background:#EAF3DE;color:#3B6D11;text-decoration:underline;
+    text-decoration-color:#639922;border-radius:2px}
+  .diff-legend{display:inline-flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink-3)}
+  .diff-legend i{font-style:normal;padding:1px 7px;border-radius:4px}
+  .diff-legend i.d{background:#FCEBEB;color:#A32D2D;text-decoration:line-through}
+  .diff-legend i.a{background:#EAF3DE;color:#3B6D11;text-decoration:underline}
+  .c-del{color:#A32D2D;font-weight:500}
+  .c-ins{color:#3B6D11;font-weight:500}
+
+  @media(max-width:940px){
+    .sidebar{width:62px;padding:14px 8px}
+    .brand h1,.brand p,.nav-item span,.nav-group,.side-foot{display:none}
+    .nav-item{justify-content:center;padding:10px}
+    .main{padding:16px 13px 60px}
+    .stats,.grid4{grid-template-columns:1fr 1fr}
+    .grid2,.grid3{grid-template-columns:1fr}
+    .ch{grid-template-columns:34px 1fr 84px 32px}
+  }
+</style>
 </head>
-<body class="h-full bg-slate-950 text-slate-100 antialiased">
-  <div id="app" class="h-full flex flex-col">
-    <header class="app-header border-b border-slate-800">
-      <div class="header-left">
-        <div class="logo-mark">霓</div>
-        <div class="logo-text">
-          <div class="logo-title">霓光交汇</div>
-          <div class="logo-subtitle">校园群像 · Galgame 原型</div>
-        </div>
-      </div>
-      <div class="header-center">
-        <button id="tab-story" class="header-tab header-tab-active">故事</button>
-        <button id="tab-characters" class="header-tab">角色</button>
-        <button id="tab-analytics" class="header-tab">关系图</button>
-      </div>
-      <div class="header-right">
-        <button id="btn-load" class="header-icon-btn" title="读档">
-          <i data-lucide="folder-open"></i>
-        </button>
-        <button id="btn-save" class="header-icon-btn" title="存档">
-          <i data-lucide="save"></i>
-        </button>
-        <button id="btn-ai" class="header-pill-btn">
-          <i data-lucide="sparkles" class="mr-1.5 h-4 w-4"></i>
-          联机续写
-        </button>
-        <button id="btn-toggle-right" class="header-icon-btn" title="切换右侧面板">
-          <i data-lucide="layout-dashboard"></i>
-        </button>
-      </div>
-    </header>
-
-    <main class="flex-1 flex overflow-hidden">
-      <section id="left-panel" class="left-panel">
-        <div id="scene-stage" class="scene-stage">
-          <div class="scene-bg"></div>
-          <div id="scene-characters" class="scene-characters"></div>
-          <div class="scene-overlay-top">
-            <div id="scene-title" class="scene-title">序章 · 夜色将至</div>
-            <div id="scene-subtitle" class="scene-subtitle">第一晚 · 天台与霓光</div>
-          </div>
-        </div>
-
-        <div id="dialogue-panel" class="dialogue-panel">
-          <div class="dialogue-header">
-            <div class="dialogue-speaker">
-              <span id="dialogue-speaker-name">？？？</span>
-            </div>
-            <div class="dialogue-meta">
-              <span id="dialogue-scene-label">序章 01</span>
-              <span class="dot-sep">·</span>
-              <span id="dialogue-line-index">0 / 0</span>
-            </div>
-          </div>
-          <div id="dialogue-text" class="dialogue-text">
-            载入中……
-          </div>
-          <div id="dialogue-ai-suggestion" class="dialogue-ai hidden"></div>
-          <div class="dialogue-footer">
-            <div id="choice-container" class="choice-container hidden"></div>
-            <div class="dialogue-controls">
-              <button id="btn-log" class="dialogue-ctrl-btn">
-                <i data-lucide="list"></i>
-                剧情记录
-              </button>
-              <button id="btn-auto" class="dialogue-ctrl-btn">
-                <i data-lucide="bot"></i>
-                自动
-              </button>
-              <button id="btn-skip" class="dialogue-ctrl-btn">
-                <i data-lucide="fast-forward"></i>
-                跳过
-              </button>
-              <button id="btn-next" class="dialogue-main-btn">
-                下一句
-                <i data-lucide="chevron-right"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div id="tab-characters-view" class="characters-view hidden">
-          <div class="characters-grid" id="characters-grid"></div>
-        </div>
-      </section>
-
-      <aside id="right-panel" class="right-panel border-l border-slate-800">
-        <div class="right-section">
-          <div class="right-section-header">
-            <div class="right-title">好感度</div>
-            <div class="right-subtitle">与你之间的距离</div>
-          </div>
-          <canvas id="affinity-chart" class="w-full h-40"></canvas>
-        </div>
-
-        <div class="right-section">
-          <div class="right-section-header">
-            <div class="right-title">当前分支</div>
-            <div class="right-subtitle">你的每一个选择都在改变故事</div>
-          </div>
-          <div id="branch-summary" class="branch-summary">
-            暂无分支信息。
-          </div>
-        </div>
-
-        <div class="right-section">
-          <div class="right-section-header">
-            <div class="right-title">系统消息</div>
-          </div>
-          <div id="system-log" class="system-log"></div>
-        </div>
-      </aside>
-    </main>
-
-    <div id="save-modal" class="modal-backdrop hidden">
-      <div class="modal-panel">
-        <div class="modal-header">
-          <div class="modal-title">存档管理</div>
-          <button id="btn-close-save" class="header-icon-btn">
-            <i data-lucide="x"></i>
-          </button>
-        </div>
-        <div id="save-list" class="save-list"></div>
-        <div class="modal-footer">
-          <button id="btn-new-save" class="primary-btn w-full">
-            新建存档
-          </button>
-        </div>
-      </div>
+<body>
+<div class="banner" id="saveBanner" hidden></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><h1>AI 小说创作台</h1><p>长篇小说工作台</p></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <span id="apiState"><span class="dot"></span>未配置模型</span><br>
+      <span id="savedAt">尚未修改</span>
     </div>
+  </aside>
+  <main class="main" id="view"></main>
+</div>
+<div class="toast" id="toast"></div>
 
-    <div id="log-modal" class="modal-backdrop hidden">
-      <div class="modal-panel log-modal-panel">
-        <div class="modal-header">
-          <div class="modal-title">剧情记录</div>
-          <button id="btn-close-log" class="header-icon-btn">
-            <i data-lucide="x"></i>
-          </button>
-        </div>
-        <div id="log-content" class="log-content"></div>
+<script>
+/* ==================================================================
+   1. 数据层
+   ================================================================== */
+const KEY='ai_novel_studio_v1';
+const OLD_KEYS=['ershou_taiyang_ai_v2','ershou_taiyang_ai_v2__prev'];  // 早期版本（本工作台前身）的数据槽，可一键导入
+const KEY_BAK='ai_novel_studio_v1__prev';      // 上一版快照：写入失败或误操作时可回滚
+const KEY_PROBE='ai_novel_studio_v1__probe';   // 存储可用性探针
+
+/* ---------- 存储可用性自检 ----------
+   直接双击本文件（file:// ）打开时一般可用；
+   若被塞进沙箱化的内嵌预览窗口，localStorage 会被拒绝访问。
+   先探一次，避免「以为在存、其实全丢」。 */
+const STORAGE=(()=>{
+  const isFile=(typeof location!=='undefined' && location.protocol==='file:');
+  try{
+    localStorage.setItem(KEY_PROBE,'1');
+    localStorage.removeItem(KEY_PROBE);
+    // 再确认真的可读回（某些隐私模式会静默吞掉写入）
+    if(localStorage.getItem(KEY_PROBE)!==null) throw new Error('写入未生效');
+    return {ok:true,reason:'',isFile};
+  }catch(e){
+    const denied=/security|denied|disabled|blocked|insecure/i.test((e.name||'')+' '+(e.message||''));
+    if(!denied){
+      return {ok:false,isFile,reason:'本地存储不可用：'+(e.message||e.name||'未知原因')};
+    }
+    return {ok:false,isFile,reason: isFile
+      ? '当前环境禁止网页使用本地存储 —— 通常是因为在内嵌预览窗口里打开了本文件。'
+      : '浏览器禁止了本站使用本地存储 —— 可能处于隐私/无痕模式，或屏蔽了站点数据。'};
+  }
+})();
+
+const DEFAULT={
+  theme:{
+    title:'',            // 作品名
+    genre:'',            // 类型：科幻 / 悬疑 / 言情 / 奇幻 / 历史 …
+    tone:'',             // 基调：冷峻 / 温暖 / 荒诞 / 史诗 …
+    audience:'',         // 目标读者（可选）
+    logline:'',
+    proposition:[
+      {layer:'表层',text:'',scene:''},
+      {layer:'中层',text:'',scene:''},
+      {layer:'深层',text:'',scene:''}
+    ],
+    epigraphs:['','','',''],
+    pitch:''
+  },
+  world:{
+    era:'',tech:[],events:[],rules:''
+  },
+  factions:[
+    {key:'f1',camp:'',name:'',claim:'',proto:'',notes:''},
+    {key:'f2',camp:'',name:'',claim:'',proto:'',notes:''},
+    {key:'f3',camp:'',name:'',claim:'',proto:'',notes:''}
+  ],
+  characters:[
+    {name:'',role:'',faction:'',stand:'',motive:'',secret:'',arc:''},
+    {name:'',role:'',faction:'',stand:'',motive:'',secret:'',arc:''},
+    {name:'',role:'',faction:'',stand:'',motive:'',secret:'',arc:''}
+  ],
+  chapters:[],
+  scenes:[],
+  refs:[],               // 用户自己的参考资料
+  goal:100000,
+  logs:[],
+  exportOpt:{scope:'all',indent:true,sep:'blank',titlePage:false,head:''},
+  revDiffMode:'mark',
+  ui:{route:'dash',curChap:0},
+  pending:{draft:'',outline:'',sparks:''},
+  updated:''
+};
+
+/* 前文摘要配置
+   架构说明：不再维护「一坨整体摘要」，而是每章各存一份摘要（chapter.sum），
+   整体摘要由 buildSummaryText() 按序拼装。这样永远不会漂移、可追溯到章、
+   重写某章只影响那一章。 */
+const DEFAULT_SUM={
+  mode:'auto',        // auto=自动汇总各章摘要 | manual=手动整段
+  manual:'',          // 手动模式下的整段摘要
+  maxChars:2000,      // 自动汇总的字数上限，超出则压缩早期章节
+  recentChapters:6,   // 超出上限时，保留最近 N 章为完整摘要
+  includeUnfinal:true // 是否纳入未定稿（草稿）章节
+};
+
+/* ---------- AI 配置（参照 AI_NovelGenerator 的多预设 + 任务路由） ---------- */
+const PRESETS={
+  'DeepSeek V4 Flash':{base_url:'https://api.deepseek.com',interface_format:'DeepSeek',model_name:'deepseek-v4-flash',temperature:0.7,max_tokens:8192,timeout:600,thinking_mode:'disabled'},
+  'DeepSeek V4 Pro':  {base_url:'https://api.deepseek.com',interface_format:'DeepSeek',model_name:'deepseek-v4-pro',temperature:0.7,max_tokens:32768,timeout:600,thinking_mode:'disabled'},
+  '硅基流动':{base_url:'https://api.siliconflow.cn/v1',interface_format:'SiliconFlow',model_name:'deepseek-ai/DeepSeek-V3',temperature:0.7,max_tokens:8192,timeout:600,thinking_mode:'default'},
+  'OpenAI 兼容':{base_url:'https://api.openai.com/v1',interface_format:'OpenAI',model_name:'gpt-4o',temperature:0.7,max_tokens:8192,timeout:600,thinking_mode:'default'},
+  'Ollama 本地':{base_url:'http://localhost:11434/v1',interface_format:'Ollama',model_name:'qwen2.5:14b',temperature:0.7,max_tokens:4096,timeout:600,thinking_mode:'default'},
+  '自定义':{base_url:'',interface_format:'OpenAI',model_name:'',temperature:0.7,max_tokens:8192,timeout:600,thinking_mode:'default'}
+};
+const TASKS=[
+  {k:'architecture_llm', n:'架构生成', d:'生成小说总架构（世界观/角色/情节）'},
+  {k:'outline_llm',      n:'大纲生成', d:'生成章节节奏分布'},
+  {k:'draft_llm',        n:'草稿生成', d:'生成本章正文'},
+  {k:'expand_llm',       n:'扩写润色', d:'把偏短的章节扩写到目标字数'},
+  {k:'summary_llm',      n:'摘要维护', d:'更新前文摘要与角色状态'},
+  {k:'review_llm',       n:'一致性审校',d:'检查与设定的冲突'}
+];
+
+const DEFAULT_AI={
+  configs:{
+    'DeepSeek V4 Flash':Object.assign({api_key:''},PRESETS['DeepSeek V4 Flash']),
+    'DeepSeek V4 Pro':  Object.assign({api_key:''},PRESETS['DeepSeek V4 Pro'])
+  },
+  last_config:'DeepSeek V4 Flash',
+  choose:{architecture_llm:'DeepSeek V4 Pro',outline_llm:'DeepSeek V4 Pro',
+          draft_llm:'DeepSeek V4 Pro',expand_llm:'DeepSeek V4 Flash',
+          summary_llm:'DeepSeek V4 Flash',review_llm:'DeepSeek V4 Flash'},
+  streaming:true,
+  guideAuto:true,   // 生成/改稿时自动从写作参考库提取相关条目
+  guideTop:3        // 每次最多注入几条
+};
+
+let DB=load();
+function mergeDefaults(over){
+  const o=Object.assign(structuredClone(DEFAULT),over||{});
+  o.ai=Object.assign(structuredClone(DEFAULT_AI),o.ai||{});
+  o.summaryCfg=Object.assign(structuredClone(DEFAULT_SUM),o.summaryCfg||{});
+  o.ui=Object.assign(structuredClone(DEFAULT.ui),o.ui||{});
+  o.pending=Object.assign(structuredClone(DEFAULT.pending),o.pending||{});
+  o.exportOpt=Object.assign(structuredClone(DEFAULT.exportOpt),o.exportOpt||{});
+  if(!Array.isArray(o.chapters)) o.chapters=[];
+  if(!Array.isArray(o.logs)) o.logs=[];
+  if(!Array.isArray(o.characters)) o.characters=[];
+  if(!Array.isArray(o.factions)) o.factions=[];
+  if(!Array.isArray(o.scenes)) o.scenes=[];
+  return o;
+}
+/* 读主存储；主存储损坏或缺失时退回上一版快照 */
+function load(){
+  for(const k of [KEY,KEY_BAK]){
+    try{
+      const raw=localStorage.getItem(k);
+      if(!raw) continue;
+      const d=JSON.parse(raw);
+      if(!d||typeof d!=='object'||Array.isArray(d)) continue;
+      const o=mergeDefaults(d);
+      // 迁移旧的单一摘要：老版本把整段摘要存在 theme._summary
+      if(!d.summaryCfg && d.theme && (d.theme._summary||'').trim()){
+        o.summaryCfg.mode='manual';
+        o.summaryCfg.manual=d.theme._summary;
+      }
+      if(k===KEY_BAK) o._recovered=true;
+      return o;
+    }catch(e){ /* 该键损坏 → 试下一个 */ }
+  }
+  return mergeDefaults(null);
+}
+/* 页面开始写盘前的兜底：任何一次改动都先标记，再由统一出口落盘 */
+let saveT=null, dirty=false, saving=false, lastOkAt=0;
+
+/* 存储不可用时的完整提示：原因 + 后果 + 处置办法 */
+function storageBlockNote(){
+  const fix = STORAGE.isFile
+    ? '请用浏览器直接打开本文件（双击），不要在内嵌预览窗口里使用。'
+    : '请关闭无痕模式，或在浏览器设置中允许本站保存数据。';
+  return STORAGE.reason+' 你的修改不会被保留。'+fix;
+}
+
+function setSaveState(state,note){
+  const el=document.getElementById('savedAt');
+  if(el){
+    if(state==='ok'){
+      const t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+      el.innerHTML=`<span class="sv ok">●</span>已保存 ${t}`;
+    }else if(state==='pending'){
+      el.innerHTML=`<span class="sv wait">●</span>待保存…`;
+    }else if(state==='fail'){
+      el.innerHTML=`<span class="sv bad">●</span>${note?'保存失败':'未保存'}`;
+    }else{
+      el.innerHTML=`<span class="sv">●</span>尚未修改`;
+    }
+  }
+  const b=document.getElementById('saveBanner');
+  if(b){
+    if(state==='fail'&&note){ b.hidden=false; b.innerHTML=`<b>⚠ 保存失败</b>　${esc(note)}`; }
+    else if(state!=='fail'){ b.hidden=true; }
+  }
+}
+
+function sizeOf(){
+  try{ return (localStorage.getItem(KEY)||'').length+(localStorage.getItem(KEY_BAK)||'').length; }
+  catch(e){ return 0; }
+}
+
+/* 真正的一次写盘。先把上一版留档，再覆盖主存储。
+   注意：比较时剔掉 updated 时间戳，否则每次都会「看起来变了」而反复轮转备份，
+   把真正值得回滚的那一版挤掉。 */
+let lastFp=null;
+/* 以「上次落盘的内容指纹」为基线：下次保存只有在内容真的变了时才轮转备份 */
+try{
+  const stored=localStorage.getItem(KEY);
+  if(stored) lastFp=stored.replace(/"updated":"[^"]*"/,'');
+}catch(e){}
+function persistNow(){
+  const json=JSON.stringify(DB);
+  const fp=json.replace(/"updated":"[^"]*"/,'');
+  try{
+    const cur=localStorage.getItem(KEY);
+    // 仅当内容确有变化时，才把上一版移入备份槽
+    if(cur && lastFp!==null && fp!==lastFp) localStorage.setItem(KEY_BAK,cur);
+  }catch(e){ try{ localStorage.removeItem(KEY_BAK); }catch(e2){} }
+  localStorage.setItem(KEY,json);
+  lastFp=fp;
+  return json.length;
+}
+
+/* 配额不足时的瘦身手段，按「损失最小」排序，返回是否还有可腾挪的 */
+function slimOnce(step){
+  if(step===0){                                  // 1) 备份快照只占空间，先丢
+    try{ localStorage.removeItem(KEY_BAK); }catch(e){}
+    return true;
+  }
+  if(step===1 && (DB.logs||[]).length>40){       // 2) 截断运行日志
+    DB.logs=DB.logs.slice(-40);
+    return true;
+  }
+  if(step===2){                                  // 3) 清掉尚未落盘的预览草稿
+    const p=DB.pending||{};
+    if(p.draft||p.outline||p.sparks){
+      DB.pending={draft:'',outline:'',sparks:''};
+      return true;
+    }
+  }
+  return false;
+}
+
+/* 立即落盘，返回是否成功 */
+function saveNow(){
+  clearTimeout(saveT); saveT=null;
+  if(saving) return true;
+  if(!STORAGE.ok){ setSaveState('fail',storageBlockNote()); return false; }
+  saving=true;
+  DB.updated=new Date().toISOString();
+  const done=(ok,note)=>{
+    saving=false;
+    if(ok){ dirty=false; lastOkAt=Date.now(); setSaveState('ok'); }
+    else  { setSaveState('fail',note); }
+    paintStorageInfo();
+    return ok;
+  };
+  try{
+    persistNow();
+    return done(true);
+  }catch(err){
+    const quota=/quota|exceed|full/i.test((err.name||'')+' '+String(err.message||''));
+    if(quota){
+      for(let s=0;s<3;s++){
+        try{
+          if(!slimOnce(s)) break;
+          persistNow();
+          return done(true);
+        }catch(e){ /* 继续下一档瘦身 */ }
+      }
+    }
+    return done(false, quota
+      ? '浏览器本地存储已满。请先在仪表盘点「导出备份 (JSON)」，再清理浏览器数据或删掉旧项目，然后重试。'
+      : (err.message||String(err)));
+  }
+}
+
+/* 日常入口：防抖 400ms（数据已在内存中最新的 DB 里，此处只延后写盘） */
+function save(){
+  dirty=true;
+  setSaveState('pending');
+  clearTimeout(saveT);
+  saveT=setTimeout(()=>saveNow(),400);
+}
+
+/* 需要确定已落盘的时刻（切章、关页等）调用 */
+function flushSave(){
+  if(saveT||dirty) return saveNow();
+  return true;
+}
+
+/* 存储概要，供仪表盘显示 */
+function paintStorageInfo(){
+  const el=document.getElementById('storeInfo');
+  if(!el) return;
+  const kw=sizeOf()/1024;
+  const chapters=DB.chapters.length;
+  const chars=DB.chapters.reduce((s,c)=>s+countWords(c.content||''),0);
+  el.innerHTML=
+    `<span class="pill">已用 ${kw<1?'<1':kw.toFixed(0)} KB</span>`+
+    `<span class="pill">${chapters} 章 · ${fmt(chars)} 字</span>`+
+    `<span class="pill">${STORAGE.ok?'本地存储可用':'<b style="color:var(--red)">存储不可用</b>'}</span>`+
+    (DB.updated?`<span class="pill">上次 ${new Date(DB.updated).toLocaleString('zh-CN',
+      {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span>`:'');
+}
+function toast(m){
+  const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1500);
+}
+function log(m){
+  const t=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  DB.logs.push(`[${t}] ${m}`);
+  if(DB.logs.length>200) DB.logs=DB.logs.slice(-200);
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function countWords(t){
+  if(!t)return 0;
+  return (t.match(/[\u4e00-\u9fa5]/g)||[]).length
+       +(t.match(/[a-zA-Z]+/g)||[]).length
+       +(t.match(/\d+/g)||[]).length;
+}
+function fmt(n){return (n||0).toLocaleString('zh-CN');}
+function uid(){return Math.random().toString(36).slice(2,9);}
+
+function setPath(o,p,v){
+  const ks=p.split('.');let c=o;
+  for(let i=0;i<ks.length-1;i++){const k=/^\d+$/.test(ks[i])?+ks[i]:ks[i];c=c[k];}
+  const l=ks[ks.length-1];c[/^\d+$/.test(l)?+l:l]=v;
+}
+function getPath(o,p){return p.split('.').reduce((c,k)=>c==null?undefined:c[/^\d+$/.test(k)?+k:k],o);}
+
+/* ==================================================================
+   2. AI 调用引擎（参照 llm_adapters.py 的适配器模式）
+   ================================================================== */
+function activeCfg(taskKey){
+  const name=DB.ai.choose[taskKey]||DB.ai.last_config;
+  const cfg=DB.ai.configs[name];
+  return cfg?{name,cfg}:null;
+}
+
+/* 清洗 API Key：去掉粘贴时常见的不可见字符与多余前缀
+   常见污染源：换行、首尾空格、零宽字符（U+200B~200D / U+FEFF）、
+   中文全角空格、被连带的 "Bearer " 前缀、成对引号 */
+function sanitizeKey(raw){
+  if(raw==null) return '';
+  let k=String(raw);
+  // 1) 先清除不可见字符与空白
+  k=k.replace(/[\u200B-\u200D\uFEFF\u00A0\u3000]/g,'');      // 零宽/不可见空白
+  k=k.replace(/[\r\n\t]+/g,'');                                // 换行制表
+  k=k.trim();
+  // 2) 循环剥离「Bearer 前缀 + 成对引号」，两种污染可能嵌套出现
+  for(let i=0;i<4;i++){
+    const before=k;
+    k=k.replace(/^Bearer\s+/i,'').trim();                      // 误带协议前缀
+    k=k.replace(/^["'`]+|["'`]+$/g,'').trim();                 // 被粘贴进来的引号
+    if(k===before) break;
+  }
+  return k.trim();
+}
+/* Key 诊断：只暴露首尾片段，用于人工核对（不泄露完整 Key） */
+function keyInfo(k){
+  k=sanitizeKey(k);
+  if(!k) return {ok:false,msg:'未填写'};
+  const len=k.length;
+  const head=k.slice(0,6), tail=k.slice(-4);
+  const mask=len>12 ? `${head}…${tail}` : `${head}…`;
+  const issues=[];
+  if(k!==String(k).trim()) issues.push('含首尾空白');
+  if(!/^sk-/.test(k)) issues.push('不以 sk- 开头');
+  if(len<20) issues.push('长度偏短，可能没复制完整');
+  if(/\s/.test(k)) issues.push('含空白字符');
+  return {ok:true,mask,len,issues};
+}
+
+function apiState(){
+  const names=Object.keys(DB.ai.configs);
+  const ok=names.filter(n=>{
+    const c=DB.ai.configs[n];
+    const isLocal=/ollama/i.test(c.interface_format||'');
+    return isLocal || sanitizeKey(c.api_key);
+  });
+  return {names,ok,total:names.length};
+}
+function paintApiState(){
+  const el=document.getElementById('apiState');if(!el)return;
+  const s=apiState();
+  if(!s.total) el.innerHTML='<span class="dot bad"></span>未配置模型';
+  else if(!s.ok.length) el.innerHTML='<span class="dot bad"></span>缺 API Key';
+  else el.innerHTML=`<span class="dot ok"></span>${s.ok.length} 个可用模型`;
+}
+function needKeyLabel(fmt){
+  return /ollama/i.test(fmt||'')?'（本地模型无需 Key）':'';
+}
+
+/* ---- 构造请求，适配不同厂商 ---- */
+function buildRequest(cfg,prompt,systemPrompt,streamOverride){
+  const fmt=(cfg.interface_format||'OpenAI').toLowerCase();
+  const base=(cfg.base_url||'').replace(/\/+$/,'');
+  const useStream = (streamOverride===undefined) ? !!DB.ai.streaming : !!streamOverride;
+  const messages=[];
+  if(systemPrompt) messages.push({role:'system',content:systemPrompt});
+  messages.push({role:'user',content:prompt});
+
+  // Gemini 使用独立协议（流式与非流式端点不同）
+  if(fmt==='gemini'){
+    const key=sanitizeKey(cfg.api_key);
+    const ep = useStream ? 'streamGenerateContent?alt=sse&' : 'generateContent?';
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model_name)}:${ep}key=${encodeURIComponent(key)}`;
+    const body={contents:[{parts:[{text:(systemPrompt?systemPrompt+'\n\n':'')+prompt}]}],
+      generationConfig:{temperature:Number(cfg.temperature)||0.7,maxOutputTokens:Number(cfg.max_tokens)||8192}};
+    return {url,headers:{'Content-Type':'application/json'},body,stream:useStream};
+  }
+
+  // 其余走 OpenAI 兼容协议
+  let url;
+  if(/\/chat\/completions$/.test(base)) url=base;
+  else url=base+'/chat/completions';
+  const headers={'Content-Type':'application/json'};
+  const isLocal=/ollama/i.test(fmt);
+  if(!isLocal) headers['Authorization']='Bearer '+sanitizeKey(cfg.api_key);
+  else headers['Authorization']='Bearer ollama';
+
+  const body={
+    model:cfg.model_name,
+    messages,
+    temperature:Number(cfg.temperature)||0.7,
+    max_tokens:Number(cfg.max_tokens)||8192,
+    stream:useStream
+  };
+  // DeepSeek 思考模式控制。
+  // 官方默认「开启且强度 high」，思维链会经 reasoning_content 返回，
+  // 写小说时 token 常被思维链吃光，导致 content 为空 —— 表现为"返回内容为空"。
+  // 因此 DeepSeek 格式默认显式关闭；其他厂商不传，避免严格 API 拒绝未知字段。
+  const tm = cfg.thinking_mode || (fmt==='deepseek' ? 'disabled' : 'default');
+  if(tm==='disabled')      body.thinking={type:'disabled'};
+  else if(tm==='enabled')  body.thinking={type:'enabled'};
+  // tm==='default' 时不传该字段，沿用服务端默认行为
+
+  return {url,headers,body,stream:useStream};
+}
+
+/* ---- 解析流式分片 ----
+   重要：DeepSeek V4 / 推理模型在思考模式下，正文以外的思维链
+   放在 delta.reasoning_content 里，而正文仍在 delta.content。
+   若模型把 token 全用于思考（或 max_tokens 偏小），
+   content 会一直是空串——必须单独收集，否则会误判为"返回为空"。 */
+function parseChunk(raw){
+  const out=[];
+  for(const line of raw.split('\n')){
+    const s=line.trim();
+    if(!s||s.startsWith(':'))continue;              // SSE 注释/心跳
+    if(!s.startsWith('data:'))continue;
+    const d=s.slice(5).trim();
+    if(d==='[DONE]'){out.push({done:true});continue;}
+    try{
+      const j=JSON.parse(d);
+      if(j.error){out.push({error:j.error.message||JSON.stringify(j.error)});continue;}
+      // OpenAI 兼容（含 DeepSeek）
+      const c=j.choices&&j.choices[0];
+      if(c){
+        const dl=c.delta||c.message||{};
+        if(dl.reasoning_content) out.push({reasoning:dl.reasoning_content});  // 思考过程
+        if(dl.content)           out.push({text:dl.content});                 // 正文
+        if(c.finish_reason)      out.push({finish:c.finish_reason});
+      }
+      // Gemini
+      const g=j.candidates&&j.candidates[0];
+      if(g){
+        const ps=(g.content&&g.content.parts)||[];
+        for(const p of ps){
+          if(p.thought) out.push({reasoning:p.text||''});
+          else if(p.text) out.push({text:p.text});
+        }
+        if(g.finishReason) out.push({finish:g.finishReason});
+      }
+    }catch(e){/* 忽略不完整分片 */}
+  }
+  return out;
+}
+
+/* ---- 单次调用（内部） ---- */
+async function _callOnce({taskKey,prompt,systemPrompt,onDelta,onReason,signal,streamOverride}){
+  const a=activeCfg(taskKey);
+  if(!a) throw new Error('未找到该任务的模型配置，请到「模型配置」检查。');
+  const cfg=a.cfg;
+  const fmt=(cfg.interface_format||'').toLowerCase();
+  const isLocal=/ollama/i.test(fmt);
+  const key=sanitizeKey(cfg.api_key);
+  if(!isLocal && !key){
+    throw new Error(`配置「${a.name}」的 API Key 为空。请到「模型配置」填写并保存。`);
+  }
+  if(!cfg.model_name||!cfg.model_name.trim())
+    throw new Error(`配置「${a.name}」的模型名称为空。`);
+
+  const req=buildRequest(cfg,prompt,systemPrompt,streamOverride);
+  const {url,headers,body,stream}=req;
+  // 日志中只记录 Key 指纹，避免完整 Key 落入日志
+  const ki=keyInfo(cfg.api_key);
+  log(`→ ${a.name} / ${cfg.model_name} / ${stream?'流式':'非流式'} / Key ${ki.ok?ki.mask+`(len=${ki.len})`:'空'} / 提示词 ${prompt.length} 字`);
+
+  const ctl=new AbortController();
+  if(signal) signal.onabort=()=>ctl.abort();
+
+  let res;
+  try{
+    res=await fetch(url,{method:'POST',headers,body:JSON.stringify(body),signal:ctl.signal});
+  }catch(err){
+    if(err.name==='AbortError') throw err;
+    throw new Error(`网络请求失败（${err.message}）。请检查 Base URL 是否正确、网络是否可达；若使用 OpenAI 官方接口，其跨域支持不稳定，建议改用 DeepSeek。`);
+  }
+
+  if(!res.ok){
+    let detail='';
+    try{const j=await res.json();detail=j.error?.message||j.error?.code||j.message||JSON.stringify(j);}
+    catch(e){try{detail=await res.text();}catch(e2){}}
+    const d=String(detail).slice(0,300);
+    if(res.status===401){
+      const head=a.name;
+      const kd=sanitizeKey(cfg.api_key);
+      throw new Error(
+        `HTTP 401 · 鉴权失败\n\n`+
+        `DeepSeek 拒绝了这枚 Key${kd?`（当前 Key：${kd.slice(0,6)}…${kd.slice(-4)}，长度 ${kd.length}）`:'（当前为空）'}。\n\n`+
+        `请逐项核对：\n`+
+        `1. Key 是否来自 API 平台 —— 必须去 platform.deepseek.com/api_keys 创建，\n`+
+        `   网页对话版（chat.deepseek.com）拿不到 API Key。\n`+
+        `2. 是否复制完整 —— DeepSeek 的 Key 以 sk- 开头，长度约 35 位。\n`+
+        `3. 是否复制到了别的平台的 Key —— 硅基流动等也以 sk- 开头，容易混淆。\n`+
+        `4. 该 Key 是否已被删除或重置。\n\n`+
+        `平台原始返回：${d}`
+      );
+    }
+    if(res.status===402) throw new Error(`HTTP 402 · 账户余额不足，请到服务商平台充值。\n\n平台返回：${d}`);
+    if(res.status===429) throw new Error(`HTTP 429 · 请求过于频繁或超出并发限制，请稍后重试。\n\n平台返回：${d}`);
+    throw new Error(`HTTP ${res.status}　${d}`);
+  }
+
+  // 非流式
+  if(!stream){
+    const raw=await res.text();
+    let j;
+    try{ j=JSON.parse(raw); }
+    catch(e){ throw new Error(`服务端返回的不是合法 JSON，无法解析。\n\n原始响应片段：\n${raw.slice(0,400)}`); }
+    if(j.error) throw new Error('服务端返回错误：'+(j.error.message||JSON.stringify(j.error).slice(0,300)));
+
+    let text='',reason='',finish='';
+    const c=j.choices&&j.choices[0];
+    if(c){
+      const m=c.message||{};
+      text=m.content||'';                    // 正文
+      reason=m.reasoning_content||'';        // DeepSeek 思考过程
+      finish=c.finish_reason||'';
+    }else{
+      const g=j.candidates&&j.candidates[0];
+      if(g){
+        for(const p of ((g.content&&g.content.parts)||[])){
+          if(p.thought) reason+=(p.text||''); else text+=(p.text||'');
+        }
+        finish=g.finishReason||'';
+      }
+    }
+    if(onDelta&&text) onDelta(text);
+    return {text,reasoning:reason,finish,raw:raw.slice(0,600)};
+  }
+
+  // 流式
+  if(!res.body) throw new Error('当前浏览器不支持流式读取。请到「模型配置」把「流式输出」改为「关闭」后重试。');
+  const reader=res.body.getReader();
+  const dec=new TextDecoder('utf-8');
+  let buf='',full='',reason='',finish='',rawAcc='';
+  const consume=(chunkText)=>{
+    rawAcc=(rawAcc+chunkText).slice(-1500);
+    for(const ev of parseChunk(chunkText)){
+      if(ev.error) throw new Error('服务端返回错误：'+ev.error);
+      if(ev.text){full+=ev.text;if(onDelta)onDelta(ev.text);}
+      if(ev.reasoning){reason+=ev.reasoning;if(onReason)onReason(reason);}
+      if(ev.finish)finish=ev.finish;
+    }
+  };
+  while(true){
+    const {done,value}=await reader.read();
+    if(done)break;
+    const chunkText=dec.decode(value,{stream:true});
+    buf+=chunkText;
+    const parts=buf.split('\n');
+    buf=parts.pop();
+    consume(parts.join('\n'));
+  }
+  if(buf.trim()) consume(buf);
+  return {text:full,reasoning:reason,finish,raw:rawAcc};
+}
+
+/* ---- 对外主调用：带自动回退与精准诊断 ---- */
+async function callAI(opts){
+  const wantStream=!!DB.ai.streaming;
+  let r;
+  try{
+    r=await _callOnce(opts);
+  }catch(err){
+    // 流式读取失败时，自动改用非流式重试一次
+    if(wantStream && opts.streamOverride===undefined && !/HTTP (401|402|429)/.test(err.message)){
+      log('流式调用失败，自动改用非流式重试… '+err.message.split('\n')[0]);
+      return (await _callOnce(Object.assign({},opts,{streamOverride:false}))).text||'';
+    }
+    throw err;
+  }
+  if((r.text||'').trim()) return r.text;
+
+  // 流式没拿到正文 → 自动用非流式重试一次（很多兼容性问题这样能绕过）
+  if(wantStream && opts.streamOverride===undefined){
+    log('流式未取到正文，自动改用非流式重试…');
+    try{
+      const r2=await _callOnce(Object.assign({},opts,{streamOverride:false}));
+      if((r2.text||'').trim()){ toast('已自动回退到非流式，生成成功'); return r2.text; }
+      r=r2;
+    }catch(e2){ /* 保留首次结果用于诊断 */ }
+  }
+
+  // —— 只拿到思考过程（DeepSeek 思考模式的典型症状）——
+  const reason=r.reasoning||'', finish=r.finish||'';
+  if(reason.trim()){
+    throw new Error(
+      `模型只返回了「思考过程」，没有返回正文。\n\n`+
+      `思考内容 ${reason.length} 字，正文 0 字，结束原因：${finish||'未知'}\n\n`+
+      `这是 DeepSeek 思考模式的典型症状 —— 官方默认「开启且强度为 high」，\n`+
+      `模型把 token 大量花在思维链上，正文就没剩多少了。\n\n`+
+      `解决办法（按推荐顺序）：\n`+
+      `1. 到「模型配置」把「思考模式」设为「关闭」，保存后重试。\n`+
+      `   写小说不需要长思维链，这才是根因。\n`+
+      `2. 若仍失败，把 max_tokens 调大（如 16384），给正文留足空间。\n`+
+      `3. 换用 deepseek-v4-flash（比 v4-pro 更容易关掉思考）。\n\n`+
+      `思考过程开头：\n${reason.trim().slice(0,180)}…`
+    );
+  }
+
+  throw new Error(
+    `模型返回内容为空。\n\n`+
+    `HTTP 状态正常，但响应里没有任何文本。结束原因：${finish||'未知'}\n\n`+
+    (finish==='content_filter'?`· 触发了服务商的内容安全策略（finish_reason = content_filter）。\n  请调整提示词中可能触发拦截的表述后重试。\n`:``)+
+    (finish==='length'?`· 达到 token 上限被截断（finish_reason = length）。请调大 max_tokens。\n`:``)+
+    (finish==='stop'||finish===''?`· 服务商返回了空响应，常见于模型名写错。\n  请到「模型配置」核对模型名称是否与服务商文档一致。\n`:`· 结束原因异常，请核对模型名与接口格式。\n`)+
+    `· 该模型可能不支持当前调用方式。\n  到「模型配置」把「流式输出」改为「关闭」后重试。\n\n`+
+    (r.raw?`原始响应片段：\n${r.raw.slice(-600)}`:'（未捕获到原始响应内容）')
+  );
+}
+
+/* ---- 测试连通性 ---- */
+async function testCfg(name){
+  const cfg=DB.ai.configs[name];
+  if(!cfg) throw new Error('配置不存在');
+  const fmt=(cfg.interface_format||'').toLowerCase();
+  if(!/ollama/i.test(fmt) && !sanitizeKey(cfg.api_key))
+    throw new Error('API Key 为空');
+  const old=DB.ai.choose.__t;DB.ai.choose.__t=name;
+  const t0=Date.now();
+  try{
+    const r=await callAI({taskKey:'__t',prompt:'请只回复两个字：可用'});
+    return {ms:Date.now()-t0,text:r.trim().slice(0,40)};
+  }finally{
+    if(old===undefined) delete DB.ai.choose.__t; else DB.ai.choose.__t=old;
+  }
+}
+
+/* ==================================================================
+   3. 提示词库（改编自 AI_NovelGenerator 的 prompt_definitions.py）
+   ================================================================== */
+function novelSetting(){
+  const T=DB.theme,W=DB.world;
+  const L=[];
+  const has=(s)=>String(s||'').trim().length>0;
+
+  L.push('# 一、作品基本信息');
+  L.push('作品名：'+(has(T.title)?T.title:'（未命名）'));
+  if(has(T.genre))    L.push('类型：'+T.genre);
+  if(has(T.tone))     L.push('基调：'+T.tone);
+  if(has(T.audience)) L.push('目标读者：'+T.audience);
+  L.push('');
+
+  L.push('# 二、主题内核');
+  L.push('一句话主题：'+(has(T.logline)?T.logline:'（未填写）'));
+  const props=(T.proposition||[]).filter(p=>has(p.text));
+  if(props.length){
+    L.push('命题分层：');
+    props.forEach(p=>L.push(`  【${p.layer}】${p.text}${has(p.scene)?`（情节功能：${p.scene}）`:''}`));
+  }
+  const eps=(T.epigraphs||[]).filter(has);
+  if(eps.length){
+    L.push('主题句候选：');
+    eps.forEach(e=>L.push('  - '+e));
+  }
+  L.push('');
+
+  L.push('# 三、世界观');
+  if(has(W.era)) L.push('时代背景：'+W.era);
+  if(has(W.rules)) L.push('世界规则：\n'+W.rules);
+  if((W.tech||[]).length){
+    L.push('技术／体系设定：');
+    W.tech.forEach(t=>L.push(`  - ${t.name}：${t.desc||''}`));
+  }
+  if((W.events||[]).length){
+    L.push('关键事件：');
+    W.events.forEach(e=>L.push(`  - ${e.time||''} ${e.text||''}`));
+  }
+  L.push('');
+
+  const facs=(DB.factions||[]).filter(f=>has(f.name));
+  if(facs.length){
+    L.push('# 四、阵营／势力');
+    facs.forEach(f=>{
+      L.push(`【${f.name}】${has(f.camp)?`（${f.camp}）`:''}`);
+      if(has(f.claim)) L.push('  主张：'+f.claim);
+      if(has(f.notes)) L.push('  在故事中：'+f.notes);
+    });
+    L.push('');
+  }
+
+  const chars=(DB.characters||[]).filter(c=>has(c.name));
+  if(chars.length){
+    L.push('# 五、人物');
+    chars.forEach(c=>{
+      L.push(`【${c.name}】${c.role||''}${has(c.faction)?`｜${c.faction}`:''}`);
+      if(has(c.stand))  L.push('  立场：'+c.stand);
+      if(has(c.motive)) L.push('  动机：'+c.motive);
+      if(has(c.secret)) L.push('  秘密：'+c.secret);
+      if(has(c.arc))    L.push('  弧光：'+c.arc);
+    });
+  }
+
+  if(!has(T.title)&&!has(T.logline)&&!has(W.era)&&!has(W.rules)&&!facs.length&&!chars.length){
+    L.push('（以上设定大多为空。请依据最基础的创作直觉补全它们，并在开头用一句话说明你补全了什么。不要反问，直接给出方案。）');
+  }
+  return L.join('\n');
+}
+
+/* 供提示词引用的短标签，避免到处硬编码题材 */
+function workLabel(){
+  const T=DB.theme||{};
+  const t=(T.title||'').trim();
+  return t?`《${t}》`:'这部小说';
+}
+function genreLabel(){
+  const g=(DB.theme.genre||'').trim();
+  return g||'长篇';
+}
+/* 用户的主题张力（用于要求"每章都要在这个张力上施压"）；为空则用中性表述 */
+function tensionLabel(){
+  const t=(DB.theme.logline||'').trim();
+  return t||'本作的核心矛盾';
+}
+
+const P={
+  /* 1) 总架构 —— 参照 core_seed / world_building / plot_architecture */
+  architecture:()=>`你是一位资深长篇小说架构师。请为${workLabel()}（${genreLabel()}）生成一份小说总架构。
+
+【作品信息】
+作品名：${DB.theme.title||'（未命名，请在架构中给出建议书名）'}
+类型：${DB.theme.genre||'（未指定，请依据已有设定判断并说明）'}
+基调：${DB.theme.tone||'（未指定）'}
+${DB.theme.audience?`目标读者：${DB.theme.audience}`:''}
+
+【一句话主题】
+${DB.theme.logline||'（尚未填写。请先从已有设定中提炼一个，再据此展开）'}
+
+【命题分层】
+${DB.theme.proposition.filter(p=>(p.text||'').trim()).map(p=>`- ${p.layer}：${p.text}`).join('\n')||'（未填写）'}
+
+【已有设定（可能为空，请尊重并补全）】
+${novelSetting()}
+
+请依次输出以下四个部分，每部分用小标题标明：
+
+# 1 核心种子
+用 300-500 字描述这个故事最独特的那一点：那个让读者无法把它和任何同类作品混淆的东西。不要写剧情，要写「立意」。
+
+# 2 角色动力学
+以「人物—欲望—阻力—代价」四元组的形式，描述主要人物的关系网。指出三条最主要的矛盾轴，并说明每条轴在第几幕最紧。
+
+# 3 世界观补全
+依据已有设定补全这个世界如何运转。给出 3-5 条具体的、有质感的社会细节（不要概括，要能落到场景里）。
+
+# 4 三幕式情节架构
+- 第一幕（约 1/4）：主角的日常被什么打破？他被迫面对的问题是什么？
+- 第二幕（约 1/2）：他深入其中后发现，真正的矛盾不在于表面问题，而在于________。中点转折是什么？最黑暗的时刻是什么？
+- 第三幕（约 1/4）：他必须付出什么代价？代价应落到他的信念或关系上，而不只是外部损失。
+
+要求：直接输出架构文本，不要客套，不要解释你在做什么。`,
+
+  /* 2) 章节大纲 —— 参照 chapter_blueprint_prompt */
+  outline:(n)=>`基于以下小说架构，为${workLabel()}（${genreLabel()}）设计 ${n} 章的节奏分布。
+
+【小说架构】
+${DB.theme._arch||'（尚未生成架构，请依据下列设定工作）'}
+${novelSetting()}
+
+【设计原则】
+1. 章节集群：每 3-5 章构成一个悬念单元，内部包含完整的小高潮。
+2. 单元之间设置「认知过山车」：连续 2 章紧张 → 1 章缓冲。
+3. 关键转折章需预留多视角铺垫。
+4. 本书的核心张力是：${tensionLabel()}。每章都应在这个张力上施加压力，不要写成无关的支线或纯动作场面。
+
+【每章需明确】
+章节定位：角色/事件/主题 之一为主
+核心作用：推进/转折/揭示/铺垫
+悬念密度：紧凑/渐进/爆发/缓冲
+伏笔操作：埋设什么、回收什么
+认知颠覆：★☆☆☆☆ 至 ★★★★★
+本章简述：一句话，控制在 60 字内
+
+【输出格式】
+第1章 - 标题
+定位：……
+作用：……
+悬念：……
+伏笔：……
+颠覆：★★☆☆☆
+简述：……
+
+要求：使用精炼语言，每章不超过 100 字。不要在最后一章之前写出结局。仅输出章节列表，不要任何解释。`,
+
+  /* 3) 本章正文 —— 参照 first_chapter / next_chapter_draft_prompt */
+  chapter:(chapNo,guidance)=>{
+    const c=DB.chapters[chapNo-1]||{};
+    const prev=DB.chapters.slice(Math.max(0,chapNo-4),chapNo-1)
+      .filter(x=>(x.content||'').trim())
+      .map((x,i)=>({no:DB.chapters.indexOf(x)+1,text:x.content.trim().slice(-1200)}));
+    const isFirst=chapNo===1;
+    const L=[];
+
+    L.push(`你正在写${workLabel()}（${genreLabel()}）。`);
+    L.push(`即将创作：第 ${chapNo} 章《${c.title||'未命名'}》`);
+    if(c.summary) L.push('本章简述：'+c.summary);
+    if(c.status)   L.push('当前状态：'+c.status);
+    L.push('');
+
+    if(isFirst){
+      L.push('【这是本书第一章】');
+      L.push('任务：完成第 1 章正文。作为开篇，它要同时做到三件事——建立主角所处的世界、埋下全书的核心张力、让读者在最后一页想翻下去。');
+      L.push('注意：不要在第一章解释世界观。让规则通过人物的行动和代价自然浮现。');
+    }else{
+      L.push('【参考文档 · 前文摘要】');
+      L.push(buildSummaryText()||'（尚未生成，请依据下列设定衔接）');
+      L.push('');
+      if(prev.length){
+        L.push('【前情提要 · 最近章节结尾片段】');
+        prev.forEach(p=>{L.push(`— 第 ${p.no} 章结尾 —`); L.push(p.text); L.push('');});
+      }
+      const next=DB.chapters[chapNo]||null;
+      if(next){
+        L.push('【下一章信息（用于衔接，本章不要写到它）】');
+        L.push(`第 ${chapNo+1} 章《${next.title||'未命名'}》：${next.summary||''}`);
+        L.push('');
+      }
+    }
+
+    L.push('【小说设定】');
+    L.push(novelSetting());
+    L.push('');
+
+    const target=DB.theme._wordTarget||3000;
+    L.push(`【写作要求】`);
+    L.push(`1. 字数：${target} 字左右（中文字符计）。这是硬指标，请写足。`);
+    L.push('2. 至少设计 2 个具有动态张力的场景，从下列类型中选择：');
+    L.push('   · 对话场景：潜台词冲突（表面谈 A，实际博弈 B）；通过非对称的对话长度体现权力关系变化。');
+    L.push('   · 心理场景：认知失调的具体表现（行为矛盾而非内心独白）；决策前的价值天平描写。');
+    L.push('   · 环境场景：非常规感官组合（例如「听见阳光的重量」）；环境与人物心理的对应。');
+    L.push('3. 本书的核心张力是：'+(DB.theme.logline||'（见上方设定）')+'。请让这一张力以**具体动作或物件**呈现，不要让人物直接阐述主题。');
+    L.push('4. 避免的写法：不要让人物大段发表观点；不要用「仿佛」「似乎」堆砌氛围；不要出现作者视角的解释性旁白。');
+    L.push('');
+    L.push('【本章额外指导】');
+    L.push(guidance||'（无特别指导，请依据上述设定自由发挥）');
+    L.push('');
+
+    // 从写作参考库自动匹配相关条目
+    const gb=guidePromptBlock(pickGuide(chapterGuideQuery(chapNo,guidance)));
+    if(gb){ L.push(gb); L.push(''); }
+
+    L.push('【格式要求】');
+    L.push('- 仅返回章节正文文本；');
+    L.push('- 不使用分章节小标题，不要写「第一幕」这类结构标注；');
+    L.push('- 不使用 Markdown 格式（不要 ** 加粗、不要 # 标题）；');
+    L.push('- 段落之间空一行。');
+    return L.join('\n');
+  },
+
+  /* 4) 扩写 —— 参照 enrich_prompt */
+  expand:(text,target)=>{
+    const gb=guidePromptBlock(pickGuide(
+      [(DB.chapters[curChap]||{}).title,(DB.chapters[curChap]||{}).summary,
+       String(text||'').slice(0,200)].filter(Boolean).join('。'),2));
+    return `以下章节文本偏短，请在**保持剧情完全连贯、不新增情节转折**的前提下进行扩写，使其接近 ${target} 字。
+
+扩写原则：
+- 只做「加深」而非「加长」：补充感官细节、动作节拍、人物微表情、环境反应。
+- 不新增人物，不新增事件，不改变任何既成事实。
+- 保持原文的叙述视角和语气。
+- 对话可以补充停顿、沉默、未说出口的部分，但不要改变对话内容的意思。
+${gb?'\n'+gb+'\n':''}
+原文：
+${text}
+
+仅输出扩写后的完整正文，不要解释。`;
+  },
+
+  /* 5) 单章摘要 —— 每章各存一份，整体摘要由它们拼装而成 */
+  chapterSum:(text,chapterNo,title)=>`请为下面这一章生成一份**客观摘要**，供后续章节写作时参考。
+
+【章节】第 ${chapterNo} 章${title?`《${title}》`:''}
+
+【正文】
+${text}
+
+【摘要要求】
+按三个部分写，每部分一行起头，不要用 Markdown 标记：
+事件：本章实际发生了什么（按时间顺序，具体到动作与结果）
+变化：人物的处境、关系、认知发生了什么改变
+新增：本章新出现的人名／物件／地点，以及新埋下的伏笔或新揭示的线索
+
+【硬性约束】
+- 总长 200-400 字，只写客观事实，不评价、不抒情、不推测
+- 必须写出具体的人名、物件名、地点名，不要用「他」「那个东西」含糊带过
+- 不要写「本章」「这一章」「作者」这类元叙述，直接陈述内容
+- 不要复述原文句子，用你自己的话概括
+- 只输出摘要，不要任何前后缀说明`,
+
+  /* 6) 一致性审校 —— 参照 consistency_checker.py */
+  review:(text)=>`请检查下面这部小说的设定与最新章节之间，是否存在明显冲突或不一致。
+
+【小说设定】
+${novelSetting()}
+
+【前文摘要】
+${buildSummaryText()||'（无）'}
+
+【最新章节正文】
+${text}
+
+请检查以下几类问题：
+1. 人物：性格是否前后一致？是否出现了不该知道某信息的人却知道？
+2. 设定：是否违反了「世界规则」中的任何一条？
+3. 伏笔：已埋下的伏笔是否被忽略或自相矛盾？
+4. 主题：本章是否偏离了核心张力（${tensionLabel()}）？
+
+输出格式：
+- 若发现问题，逐条列出「位置 → 问题 → 建议」
+- 若无明显冲突，回复「无明显冲突」
+- 最多列出 5 条，按严重程度排序
+
+仅输出检查结果。`,
+
+  /* 7) 灵感 —— 无参考，自创 */
+  sparks:(topic,n)=>`你是${workLabel()}的创意顾问。这部作品的设定如下：
+${novelSetting()}
+
+请围绕以下方向给出 ${n} 个可用于小说的**具体场景**（不是情节概要，而是可以直接落笔的场面）：
+方向：${topic||'不限，请从设定中自行寻找最有张力的切口'}
+
+每个场景要求：
+- 有明确的地点、时间、在场人物
+- 包含一个「动作」或「物件」承载核心张力（不要让人物直接讲道理）
+- 3 句话以内说清，不超过 80 字
+- 至少 2 个应带有不适感或道德两难
+
+【输出格式】
+1. 场景描述……
+2. 场景描述……
+
+仅输出列表，不要解释。`,
+
+  /* 8) 修订已有草稿 —— 核心：在既有正文上做增删改 */
+  revise:(o)=>{
+    const {instruction,mode,sel,full,chapterNo,targetKeep} = o;
+    const isSel = mode==='selection' && sel && sel.trim();
+    const payload = isSel ? sel : full;
+
+    const modeDesc = {
+      selection:
+`【工作模式：局部修订（只改选中的片段）】
+下面给出的是从本章正文中截取的一个片段。请**只修改这个片段**，输出修改后的片段即可。
+严禁改动片段之外的内容，也不要输出整章。`,
+      full:
+`【工作模式：整章重写】
+下面给出的是本章完整正文。请依据修改要求重写全章，保留原有的剧情主干与人物关系（除非修改要求明确要改），
+只调整被指出的问题。`,
+      insert:
+`【工作模式：增写情节】
+下面给出的是本章完整正文。请在**最合适的位置插入新的情节**（位置由你判断，但要在逻辑上自然）。
+除了新增部分，其余文字应尽量保持原样，不要顺手重写全文。输出插入后的完整正文。`,
+      cut:
+`【工作模式：删改情节】
+下面给出的是本章完整正文。请依据修改要求**删除或压缩指定内容**，
+同时处理好前后衔接，使删改后的文字读起来是连贯的、看不出缺口。输出删改后的完整正文。`,
+      polish:
+`【工作模式：润色改写】
+下面给出的是本章完整正文。请在**不改变任何情节事实、不增删事件**的前提下，
+只打磨语言：句子的节奏、感官细节、对话的潜台词、段落的呼吸感。
+输出润色后的完整正文。`
+    }[mode] || '';
+
+    const L=[];
+    L.push(`你是一位经验丰富的文学编辑，正在协助修改${workLabel()}（${genreLabel()}）的第 ${chapterNo} 章。`);
+    L.push('');
+    L.push('【小说设定（供你把握人物与设定，不要写进正文）】');
+    L.push(novelSetting());
+    L.push('');
+    const ch=DB.chapters[chapterNo-1]||{};
+    if(ch.title||ch.summary){
+      L.push('【本章大纲】');
+      if(ch.title) L.push('标题：'+ch.title);
+      if(ch.summary) L.push('简述：'+ch.summary);
+      L.push('');
+    }
+    L.push('【本次修改要求】');
+    L.push(instruction||'（未填写具体要求，请只做最保守的语句通顺化处理）');
+    L.push('');
+    L.push(modeDesc);
+    L.push('');
+    L.push('【待修改文本】');
+    L.push(payload);
+    L.push('');
+
+    // 按「修改要求 + 章节信息」自动挑参考，只取前 2 条（改稿不宜塞太多）
+    const rgb=guidePromptBlock(pickGuide(reviseGuideQuery(instruction,ch,payload),2));
+    if(rgb){ L.push(rgb); L.push(''); }
+
+    L.push('【硬性约束】');
+    L.push('- 只输出修改后的正文文本，不要任何解释、说明、注释或前后缀；');
+    L.push('- 不要使用 Markdown 格式（不要 ** 加粗、不要 # 标题、不要 ``` 代码块）；');
+    L.push('- 保留原有的分段方式，段落之间空一行；');
+    L.push('- 保持第三人称叙述视角与原文语气，不要改变人称；');
+    L.push('- 不要写「以下是修改后的内容」这类引导语，直接给正文。');
+    if(mode==='polish'){
+      L.push(`- 润色后篇幅应与原文接近（原文约 ${countWords(payload)} 字），不要大幅扩写。`);
+    }else if(mode!=='selection'&&targetKeep){
+      L.push(`- 修改后篇幅控制在 ${fmt(targetKeep)} 字左右。`);
+    }
+    return L.join('\n');
+  }
+};
+
+/* ==================================================================
+   4. 视图
+   ================================================================== */
+const NAV=[
+  {g:'作品'},
+  {id:'dash',t:'仪表盘',i:'M3 3h7v7H3zM12 3h7v4h-7zM12 10h7v9h-7zM3 13h7v6H3z'},
+  {id:'arch',t:'AI 生成架构',i:'M12 2a10 10 0 100 20 10 10 0 000-20zM2 12h20M12 2c3 4 3 16 0 20M12 2c-3 4-3 16 0 20'},
+  {id:'theme',t:'主题内核',i:'M12 2v20M2 12h20'},
+  {id:'world',t:'世界观',i:'M4 19.5A2.5 2.5 0 016.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z'},
+  {g:'设定'},
+  {id:'faction',t:'阵营势力',i:'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 8 4 4 0 000-8M23 21v-2a4 4 0 00-3-3.87'},
+  {id:'char',t:'人物',i:'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 3a4 4 0 100 8 4 4 0 000-8z'},
+  {id:'scene',t:'灵感碎片',i:'M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z'},
+  {g:'写作'},
+  {id:'outline',t:'章节大纲',i:'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'},
+  {id:'write',t:'AI 写作',i:'M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z'},
+  {g:'系统'},
+  {id:'model',t:'模型配置',i:'M12 2l9 5v10l-9 5-9-5V7z'},
+  {id:'library',t:'写作参考',i:'M4 19.5A2.5 2.5 0 016.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z'}
+];
+let route='dash';
+buildNav();
+function buildNav(){
+  document.getElementById('nav').innerHTML=NAV.map(n=>n.g
+    ?`<div class="nav-group">${n.g}</div>`
+    :`<button class="nav-item ${route===n.id?'on':''}" data-go="${n.id}">
+       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${n.i}"/></svg>
+       <span>${n.t}</span></button>`).join('');
+}
+
+const V={};
+
+/* ---------- 旧版项目检测与导入 ----------
+   早期版本工作台的数据存在另一个键里。
+   本工作台用独立键，所以两者互不覆盖；这里只做「发现即提示、点一下即可搬过来」。 */
+function legacyProject(){
+  if(DB._legacyIgnored) return null;
+  for(const k of OLD_KEYS){
+    try{
+      const raw=localStorage.getItem(k);
+      if(!raw) continue;
+      const d=JSON.parse(raw);
+      if(!d||!Array.isArray(d.chapters)) continue;
+      const chars=d.chapters.reduce((s,c)=>s+((c.content||'').length),0);
+      return {
+        key:k,
+        title:(d.theme&&d.theme.title)||'（未命名）',
+        chapters:d.chapters.length,
+        chars, data:d
+      };
+    }catch(e){ /* 坏数据直接跳过 */ }
+  }
+  return null;
+}
+function importLegacy(){
+  const l=legacyProject();
+  if(!l){ toast('没有可导入的旧项目'); return; }
+  const d=l.data;
+  const o=mergeDefaults(d);
+  // 旧项目的摘要结构与本版兼容；若存在摘要则原样带过来
+  if(d.summaryCfg) o.summaryCfg=Object.assign(structuredClone(DEFAULT_SUM),d.summaryCfg);
+  if(!o.theme.title) o.theme.title=l.title;
+  DB=o;
+  DB._legacyImportedAt=new Date().toISOString();
+  curChap=Math.max(0,Math.min(o.ui&&o.ui.curChap||0,Math.max(0,o.chapters.length-1)));
+  lastDraft=(o.pending&&o.pending.draft)||'';
+  lastOutline=(o.pending&&o.pending.outline)||'';
+  lastSparks=(o.pending&&o.pending.sparks)||'';
+  saveNow(); render();
+  toast(`已导入《${l.title}》 ${l.chapters} 章`);
+  log(`从旧版导入项目：${l.title}（${l.chapters} 章）`);
+}
+
+/* ---------- 仪表盘 ---------- */
+V.dash=()=>{
+  const total=DB.chapters.reduce((s,c)=>s+countWords(c.content||''),0);
+  const done=DB.chapters.filter(c=>c.status==='已定稿').length;
+  const goal=DB.goal||1, pct=Math.min(100,Math.round(total/goal*100));
+  const s=apiState();
+  const alert = !s.total
+    ? `<div class="alert warn">还没有配置任何模型。<b>AI 功能需要先接入模型</b>——请到「模型配置」添加一个 API Key，即可在工作台内直接生成架构、大纲和正文。<br>推荐用 DeepSeek（浏览器直连已实测可用，无需后端）。</div>`
+    : !s.ok.length
+    ? `<div class="alert err">配置里还没有可用的 API Key。请到「模型配置」填写。</div>`
+    : `<div class="alert ok">已接入 ${s.ok.length} 个可用模型，AI 功能就绪。</div>`;
+
+  const legacy=legacyProject();
+  const legacyAlert = legacy
+    ? `<div class="alert warn">
+         <b>检测到旧版项目《${esc(legacy.title)}》</b>（${legacy.chapters} 章 · ${fmt(legacy.chars)} 字）。
+         它存在旧的数据槽里，与本工作台互不干扰。
+         <div class="row" style="margin-top:8px">
+           <button class="btn sm primary" id="btnImportLegacy">导入这个项目</button>
+           <button class="btn sm" id="btnIgnoreLegacy">不再提示</button>
+         </div>
+       </div>`
+    : '';
+
+  const bookName=(DB.theme.title||'').trim();
+  return `
+  <div class="view-head"><h2>仪表盘</h2>
+  <p>${bookName?`《${esc(bookName)}》`:'未命名作品'}的创作进度。数据存在本机浏览器，AI 调用直接从你的浏览器发往模型服务商，不经过任何中间服务器。</p></div>
+  ${alert}
+  ${legacyAlert}
+  <div class="stats">
+    <div class="stat"><div class="n">${fmt(total)}</div><div class="l">累计字数</div>
+      <div class="bar"><i style="width:${pct}%"></i></div></div>
+    <div class="stat"><div class="n">${DB.chapters.length}</div><div class="l">章节总数</div></div>
+    <div class="stat"><div class="n">${done}</div><div class="l">已定稿</div></div>
+    <div class="stat"><div class="n">${fmt(DB.goal)}</div><div class="l">目标字数</div></div>
+  </div>
+  <div class="card">
+    <div class="card-t">作品信息</div>
+    <div class="grid4">
+      <div class="field"><label class="f">作品名</label>
+        <input type="text" data-bind="theme.title" value="${esc(DB.theme.title||'')}" placeholder="给它起个名字"></div>
+      <div class="field"><label class="f">类型</label>
+        <input type="text" data-bind="theme.genre" value="${esc(DB.theme.genre||'')}" placeholder="科幻 / 悬疑 / 言情 / 奇幻…"></div>
+      <div class="field"><label class="f">基调</label>
+        <input type="text" data-bind="theme.tone" value="${esc(DB.theme.tone||'')}" placeholder="冷峻 / 温暖 / 荒诞 / 史诗…"></div>
+      <div class="field"><label class="f">目标读者</label>
+        <input type="text" data-bind="theme.audience" value="${esc(DB.theme.audience||'')}" placeholder="可选"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-t">一句话主题</div>
+    <textarea rows="3" data-bind="theme.logline" placeholder="用一句话说清这部小说的核心张力。这句话会贯穿架构、大纲、正文与审校。">${esc(DB.theme.logline)}</textarea>
+  </div>
+  <div class="card">
+    <div class="card-t">AI 工作流 <span class="hint">架构 → 大纲 → 正文 → 改稿 → 摘要 → 导出</span></div>
+    <div class="row">
+      <button class="btn primary" data-go="arch">① 生成架构</button>
+      <button class="btn" data-go="outline">② 生成大纲</button>
+      <button class="btn" data-go="write">③ 生成正文</button>
+      <button class="btn" data-go="write">④ 扩写 / 定稿</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-2);margin-top:11px;line-height:1.85">
+      每一步的结果都会写入工作台，成为下一步的输入。你随时可以手动修改任何环节——
+      <b>AI 负责铺路，你负责判断</b>。
+    </p>
+  </div>
+  <div class="card">
+    <div class="card-t">运行日志 <span class="hint">最近 ${DB.logs.length} 条</span></div>
+    <div class="logbox">${esc(DB.logs.slice(-40).join('\n'))||'（暂无）'}</div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn sm" id="btnClearLog">清空日志</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-t">写作目标</div>
+    <div class="grid2">
+      <div class="field"><label class="f">全书目标字数</label>
+        <input type="number" data-bind="goal" value="${DB.goal||0}" step="1000"></div>
+      <div class="field"><label class="f">单章目标字数</label>
+        <input type="number" id="wordTarget" value="${DB.theme._wordTarget||3000}" step="500"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-t">导出纯文本 (TXT)
+      <span class="hint">可直接放进手机阅读器 / 打印</span></div>
+    ${(()=>{
+      const eo=DB.exportOpt||{};
+      const withContent=DB.chapters.filter(c=>(c.content||'').trim());
+      const finalOnly=withContent.filter(c=>c.status==='已定稿');
+      const pick=(eo.scope==='final')?finalOnly:(eo.scope==='current')?
+        withContent.filter((c,i)=>DB.chapters.indexOf(c)===curChap):withContent;
+      const chars=pick.reduce((s,c)=>s+countWords(c.content||''),0);
+      return `
+      <div class="grid4">
+        <div class="field"><label class="f">导出范围</label>
+          <select id="txtScope">
+            <option value="all" ${eo.scope!=='final'&&eo.scope!=='current'?'selected':''}>全部有正文的章节 (${withContent.length})</option>
+            <option value="final" ${eo.scope==='final'?'selected':''}>仅已定稿 (${finalOnly.length})</option>
+            <option value="current" ${eo.scope==='current'?'selected':''}>仅当前章节</option>
+          </select></div>
+        <div class="field"><label class="f">段落缩进</label>
+          <select id="txtIndent">
+            <option value="1" ${eo.indent!==false?'selected':''}>首行缩进两字（推荐）</option>
+            <option value="0" ${eo.indent===false?'selected':''}>不缩进</option>
+          </select></div>
+        <div class="field"><label class="f">章节之间</label>
+          <select id="txtSep">
+            <option value="blank" ${(!eo.sep||eo.sep==='blank')?'selected':''}>空行分隔</option>
+            <option value="line" ${eo.sep==='line'?'selected':''}>※※※ 分隔线</option>
+            <option value="page" ${eo.sep==='page'?'selected':''}>分页符（部分阅读器分页）</option>
+          </select></div>
+        <div class="field"><label class="f">扉页</label>
+          <select id="txtTitlePage">
+            <option value="0" ${!eo.titlePage?'selected':''}>不添加</option>
+            <option value="1" ${eo.titlePage?'selected':''}>书名 + 主题句</option>
+          </select></div>
       </div>
+      <div class="field"><label class="f">书名</label>
+        <input type="text" id="txtHead" value="${esc(eo.head||DB.theme.title||'')}" placeholder="留空则用作品信息里的作品名"></div>
+      <div class="alert ok" style="margin:0 0 11px">
+        将导出 <b>${pick.length}</b> 章，约 <b>${fmt(chars)}</b> 字 ·
+        编码 <code>UTF-8 (含 BOM)</code> · 换行 <code>CRLF</code>
+        <span style="color:var(--ink-2)">（Windows 记事本与手机阅读器均可正确显示，不会乱码）</span>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="btnExportTxt">一键导出 TXT</button>
+        <button class="btn" id="btnPreviewTxt">预览效果</button>
+        <button class="btn" id="btnCopyTxt">复制全文到剪贴板</button>
+      </div>`;
+    })()}
+    <div class="ai-out" id="txtOut" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <div class="card-t">本地保存 <span class="hint">自动保存 · 关页前一定落盘</span></div>
+    <div id="storeInfo" class="row" style="gap:7px;flex-wrap:wrap;margin-bottom:10px"></div>
+    <div class="row">
+      <button class="btn primary" id="btnSaveNow">立即保存</button>
+      <button class="btn" id="btnRestorePrev">恢复上一版备份</button>
+      <button class="btn" id="btnStorageHelp">保存位置说明</button>
+    </div>
+    <div id="storeHelp" hidden></div>
+    <div class="savenote">
+      输入后 0.4 秒自动保存；切换章节、切到后台、关闭页面前会强制写盘；每 15 秒还有一次心跳补写。<br>
+      数据存在本机浏览器里，<b>请勿使用「清除浏览数据」</b>，跨设备请用下方的「导出备份 (JSON)」。
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-t">数据管理 <span class="hint">数据只在浏览器，强烈建议定期导出</span></div>
+    <div class="row">
+      <button class="btn primary" id="btnExportJson">导出备份 (JSON)</button>
+      <button class="btn" id="btnExportMd">导出为 Markdown</button>
+      <button class="btn" id="btnImport">导入备份</button>
+      <span style="flex:1"></span>
+      <button class="btn danger" id="btnReset">清空重置</button>
+    </div>
+    <input type="file" id="fileImport" accept=".json" style="display:none">
+  </div>`;
+};
+
+/* ---------- AI 生成架构 ---------- */
+V.arch=()=>{
+  const a=activeCfg('architecture_llm');
+  const has=!!(DB.theme._arch||'').trim();
+  return `
+  <div class="view-head"><h2>AI 生成架构</h2>
+  <p>第一步。AI 会读取你的主题内核、世界观、阵营、人物，生成一份完整的小说总架构，并自动写入下方。它会成为后续大纲与正文的依据。</p></div>
+
+  ${a?`<div class="alert ok" style="background:var(--panel-2);color:var(--ink-2);border-color:var(--line)">
+      当前任务模型：<b>${esc(a.name)}</b> · ${esc(a.cfg.model_name)}　
+      <span class="hint">（可在「模型配置」中为「架构生成」单独指定模型）</span></div>`
+     :`<div class="alert err">未找到「架构生成」的模型配置。</div>`}
+
+  <div class="card">
+    <div class="card-t">生成架构
+      <button class="btn primary" id="btnGenArch" ${a?'':'disabled'}>开始生成</button></div>
+    <div class="ai-meta" id="archMeta"></div>
+    <div class="ai-out" id="archOut">${esc(DB.theme._arch||'')}</div>
+    ${has?`<div class="row" style="margin-top:12px">
+      <button class="btn sm" id="btnCopyArch">复制</button>
+      <button class="btn sm" id="btnClearArch">清除</button>
+      <span class="hint" style="font-size:11px;color:var(--ink-3)">已保存，会自动作为后续步骤的依据</span>
+    </div>`:''}
+  </div>
+  <div class="card">
+    <div class="card-t">手动编辑 <span class="hint">AI 生成的不满意？直接改</span></div>
+    <textarea rows="12" data-bind="theme._arch"
+      placeholder="这里存放小说总架构。留空则使用下方的基础设定……">${esc(DB.theme._arch||'')}</textarea>
+  </div>`;
+};
+
+/* ---------- 主题内核 ---------- */
+V.theme=()=>{
+  const p=DB.theme.proposition;
+  return `
+  <div class="view-head"><h2>主题内核</h2>
+  <p>全书的哲学骨架。这里的内容会作为「小说设定」的一部分发送给 AI，所以写得越准，生成质量越高。</p></div>
+  <div class="card"><div class="card-t">一句话主题（logline）</div>
+    <textarea rows="3" data-bind="theme.logline">${esc(DB.theme.logline)}</textarea></div>
+  <div class="card">
+    <div class="card-t">核心命题三层
+      <button class="btn sm" data-add="prop">+ 添加一层</button></div>
+    ${p.map((x,i)=>`
+      <div class="item" style="background:var(--panel-2);border-color:transparent">
+        <div class="item-h">
+          <input style="max-width:140px;background:none;border:none;font-weight:500;padding:2px 0"
+                 data-bind="theme.proposition.${i}.layer" value="${esc(x.layer)}">
+          <button class="icon-btn" data-del="prop" data-i="${i}">&times;</button></div>
+        <div class="field"><textarea rows="2" data-bind="theme.proposition.${i}.text"
+          placeholder="这一层要问的问题">${esc(x.text)}</textarea></div>
+        <div class="field"><input type="text" data-bind="theme.proposition.${i}.scene"
+          placeholder="对应的情节功能" value="${esc(x.scene)}"></div>
+      </div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="card-t">主题句候选 <button class="btn sm" data-add="epi">+ 添加</button></div>
+    ${DB.theme.epigraphs.map((x,i)=>`
+      <div class="row" style="margin-bottom:8px">
+        <input type="text" style="font-family:var(--serif)" data-bind="theme.epigraphs.${i}" value="${esc(x)}">
+        <button class="icon-btn" data-del="epi" data-i="${i}">&times;</button></div>`).join('')}
+  </div>
+  <div class="card" style="background:var(--accent-soft);border-color:#d6d3f7">
+    <div class="card-t">怎么写好这一栏</div>
+    <p style="font-size:13px;color:var(--ink-2);line-height:1.95;margin:0">
+      一句话主题不是简介，是<b>张力</b>——它要能说清「什么和什么在打架」。<br>
+      写法参考：<b>「一个 ___ 的人，必须 ___，否则 ___」</b>。<br>
+      填完之后，AI 生成架构、大纲、正文、审校时都会反复引用这句话：
+      大纲要靠它决定每章施压的方向，正文要靠它决定哪些细节值得写。
+      <span style="color:var(--ink-3)">如果这句话写不清楚，后面每一步都会发散。</span>
+    </p>
+  </div>`;
+};
+
+/* ---------- 世界观 ---------- */
+V.world=()=>`
+  <div class="view-head"><h2>世界观</h2>
+  <p>先把规则钉死，再谈后果。世界观不是背景板——它决定了人物在哪些事上没有选择。</p></div>
+  <div class="card"><div class="card-t">时代背景</div>
+    <textarea rows="5" data-bind="world.era" placeholder="故事发生在什么年代、什么地方？社会结构是什么样的？普通人的日常被什么改变了？">${esc(DB.world.era)}</textarea></div>
+  <div class="card">
+    <div class="card-t">关键设定 <span class="hint">技术、制度、超自然规则——只写会影响情节的那几条</span>
+      <button class="btn sm" data-add="tech">+ 添加</button></div>
+    ${DB.world.tech.length?DB.world.tech.map((x,i)=>`
+      <div class="item"><div class="item-h">
+        <input style="max-width:220px;background:none;border:none;font-weight:500;padding:2px 0"
+               data-bind="world.tech.${i}.name" value="${esc(x.name)}" placeholder="技术名称">
+        <button class="icon-btn" data-del="tech" data-i="${i}">&times;</button></div>
+        <textarea rows="2" data-bind="world.tech.${i}.desc" placeholder="它做什么、能力边界在哪、代价是什么">${esc(x.desc||'')}</textarea>
+      </div>`).join(''):`<div class="empty">点「+ 添加」开始</div>`}
+  </div>
+  <div class="card">
+    <div class="card-t">关键事件 <span class="hint">故事开始前已发生的事</span>
+      <button class="btn sm" data-add="event">+ 添加</button></div>
+    ${DB.world.events.length?DB.world.events.map((x,i)=>`
+      <div class="row" style="margin-bottom:8px">
+        <input type="text" style="max-width:120px" data-bind="world.events.${i}.time" value="${esc(x.time||'')}" placeholder="时间">
+        <input type="text" data-bind="world.events.${i}.text" value="${esc(x.text||'')}" placeholder="发生了什么">
+        <button class="icon-btn" data-del="event" data-i="${i}">&times;</button></div>`).join('')
+      :`<div class="empty">还没有关键事件</div>`}
+  </div>
+  <div class="card"><div class="card-t">世界规则 <span class="hint">不会被打破的底线，AI 审校时会据此检查</span></div>
+    <textarea rows="5" data-bind="world.rules">${esc(DB.world.rules)}</textarea></div>`;
+
+/* ---------- 阵营 ---------- */
+V.faction=()=>`
+  <div class="view-head"><h2>阵营 / 势力</h2>
+  <p>故事里至少要有两股无法调和的力。写清每方「要什么」和「愿意付出什么」，冲突会自己长出来。</p></div>
+  ${(DB.factions||[]).map((f,i)=>`
+    <div class="card">
+      <div class="fac f-${f.key}" style="margin:0;border:1px solid var(--line);border-left:3px solid">
+        <div class="top">
+          <input class="nm" style="background:none;border:none;padding:0;font-size:15px;font-weight:500"
+                 data-bind="factions.${i}.name" value="${esc(f.name)}">
+          <span class="tag">${esc(f.camp)}</span></div>
+        <div class="field" style="margin:10px 0 8px"><label class="f">主张</label>
+          <textarea rows="2" data-bind="factions.${i}.claim">${esc(f.claim)}</textarea></div>
+        <div class="grid2">
+          <div class="field"><label class="f">现实原型</label>
+            <input type="text" data-bind="factions.${i}.proto" value="${esc(f.proto)}"></div>
+          <div class="field"><label class="f">在故事里的作用</label>
+            <input type="text" data-bind="factions.${i}.notes" value="${esc(f.notes||'')}" placeholder="谁来代表？内部矛盾是什么？"></div>
+        </div>
+      </div></div>`).join('')}
+  <button class="btn" data-add="faction">+ 新增派别</button>`;
+
+/* ---------- 人物 ---------- */
+V.char=()=>`
+  <div class="view-head"><h2>人物</h2>
+  <p>每个人物都要有一个「想要」和一个「不肯说」。秘密比动机更能撑起情节——动机解释他为什么走，秘密决定他什么时候崩。</p></div>
+  ${DB.characters.length?DB.characters.map((c,i)=>`
+    <div class="card">
+      <div class="item-h" style="margin-bottom:11px">
+        <input style="background:none;border:none;font-size:15px;font-weight:500;padding:0;max-width:260px"
+               data-bind="characters.${i}.name" value="${esc(c.name)}" placeholder="姓名">
+        <button class="icon-btn" data-del="char" data-i="${i}">&times;</button></div>
+      <div class="grid3">
+        <div class="field"><label class="f">身份 / 职业</label>
+          <input type="text" data-bind="characters.${i}.role" value="${esc(c.role||'')}"></div>
+        <div class="field"><label class="f">所属阵营</label>
+          <select data-bind="characters.${i}.faction">
+            <option value="">— 未定 —</option>
+            ${['主角','对手','盟友','导师','路人','其他'].map(f=>
+              `<option ${c.faction===f?'selected':''}>${f}</option>`).join('')}
+          </select></div>
+        <div class="field"><label class="f">立场一句话</label>
+          <input type="text" data-bind="characters.${i}.stand" value="${esc(c.stand||'')}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label class="f">动机（他想要什么）</label>
+          <textarea rows="2" data-bind="characters.${i}.motive">${esc(c.motive||'')}</textarea></div>
+        <div class="field"><label class="f">秘密（他隐瞒什么）</label>
+          <textarea rows="2" data-bind="characters.${i}.secret">${esc(c.secret||'')}</textarea></div>
+      </div>
+      <div class="field"><label class="f">人物弧光</label>
+        <textarea rows="2" data-bind="characters.${i}.arc">${esc(c.arc||'')}</textarea></div>
+    </div>`).join(''):`<div class="empty">还没有人物</div>`}
+  <button class="btn primary" data-add="char">+ 新增人物</button>`;
+
+/* ---------- 灵感碎片 ---------- */
+V.scene=()=>`
+  <div class="view-head"><h2>灵感碎片</h2>
+  <p>可以手动记录，也可以让 AI 按你的方向批量生成。</p></div>
+  <div class="card">
+    <div class="card-t">AI 生成灵感
+      <button class="btn primary" id="btnSparks">生成</button></div>
+    <div class="grid2">
+      <div class="field"><label class="f">方向（可留空）</label>
+        <input type="text" id="sparkTopic" placeholder="例如：主角第一次撒的谎 / 反派在雨夜的决定"></div>
+      <div class="field"><label class="f">数量</label>
+        <input type="number" id="sparkN" value="6" min="3" max="12"></div>
+    </div>
+    <div class="ai-meta" id="sparkMeta"></div>
+    <div class="ai-out" id="sparkOut"></div>
+    <div class="row" style="margin-top:10px" id="sparkActions" hidden>
+      <button class="btn primary" id="btnSparkAdd">全部添加到下方</button>
+    </div>
+  </div>
+  ${DB.scenes.length?DB.scenes.map((s,i)=>`
+    <div class="item">
+      <div class="item-h">
+        <div class="row" style="flex:1">
+          <button class="btn sm" data-toggle="scene" data-i="${i}"
+            style="${s.used?'background:var(--teal-soft);border-color:#9fd8c4;color:var(--teal)':''}">
+            ${s.used?'已用':'待用'}</button>
+          <input type="text" style="max-width:130px;background:none;border:none;padding:2px 0"
+                 data-bind="scenes.${i}.tag" value="${esc(s.tag||'')}" placeholder="标签">
+          <span class="pill">${countWords(s.text)} 字</span></div>
+        <button class="icon-btn" data-del="scene" data-i="${i}">&times;</button></div>
+      <textarea rows="3" data-bind="scenes.${i}.text">${esc(s.text||'')}</textarea>
+    </div>`).join(''):`<div class="empty">还没有灵感碎片</div>`}
+  <button class="btn" data-add="scene">+ 手动新增</button>`;
+
+/* ---------- 章节大纲 ---------- */
+V.outline=()=>{
+  const a=activeCfg('outline_llm');
+  return `
+  <div class="view-head"><h2>章节大纲</h2>
+  <p>第二步。AI 会依据架构设计节奏分布，并自动填入下方章节表——你可以逐条修改。</p></div>
+  <div class="card">
+    <div class="card-t">AI 生成大纲
+      <button class="btn primary" id="btnGenOutline" ${a?'':'disabled'}>生成大纲</button></div>
+    <div class="grid2">
+      <div class="field"><label class="f">生成章节数</label>
+        <input type="number" id="outlineN" value="20" min="3" max="120"></div>
+      <div class="field"><label class="f">写入方式</label>
+        <select id="outlineMode">
+          <option value="replace">替换全部现有章节</option>
+          <option value="append">追加到现有章节后面</option>
+        </select></div>
+    </div>
+    <div class="alert warn" style="margin-top:4px">
+      提示：先用「AI 生成架构」产出架构，大纲质量会显著提高。若跳过，AI 将依据主题内核与人物设定工作。
+    </div>
+    <div class="ai-meta" id="outMeta"></div>
+    <div class="ai-out" id="outOut"></div>
+    <div class="row" style="margin-top:10px" id="outActions" hidden>
+      <button class="btn primary" id="btnOutApply">解析并写入章节表</button>
+      <span class="hint" style="font-size:11px;color:var(--ink-3)">会覆盖同名章节的标题与简述</span>
+    </div>
+  </div>
+  <div class="row" style="margin-bottom:13px">
+    <button class="btn" data-add="chap">+ 手动新增一章</button>
+    <button class="btn" data-batch="chap">批量添加</button>
+    <span style="flex:1"></span>
+    <span style="font-size:12px;color:var(--ink-3)">共 ${DB.chapters.length} 章</span>
+  </div>
+  <div class="card" style="padding:9px 11px">
+    <div class="ch head"><div>章</div><div>标题 / 简介</div><div>状态</div><div>字数</div><div></div></div>
+    ${DB.chapters.length?DB.chapters.map((c,i)=>`
+      <div class="ch">
+        <div class="no">${i+1}</div>
+        <div>
+          <input type="text" data-bind="chapters.${i}.title" value="${esc(c.title||'')}" placeholder="章节标题">
+          <input type="text" style="font-size:12px;color:var(--ink-2)"
+                 data-bind="chapters.${i}.summary" value="${esc(c.summary||'')}" placeholder="一句话概要">
+        </div>
+        <select data-bind="chapters.${i}.status">
+          ${['待写','草稿','已定稿'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+        <div><span class="chip ${c.status==='已定稿'?'done':c.status==='草稿'?'draft':''}">${fmt(countWords(c.content||''))} 字</span></div>
+        <div><button class="icon-btn" data-del="chap" data-i="${i}">&times;</button></div>
+      </div>`).join(''):`<div class="empty">还没有章节。点上面的「批量添加」快速建表。</div>`}
+  </div>`;
+};
+
+/* ---------- AI 写作 ---------- */
+let curChap=0;
+V.write=()=>{
+  if(!DB.chapters.length){
+    return `<div class="view-head"><h2>AI 写作</h2></div>
+      <div class="empty">还没有章节。<br><br>
+      <button class="btn primary" data-go="outline">先去建立章节表</button></div>`;
+  }
+  if(curChap>=DB.chapters.length){curChap=DB.chapters.length-1;rememberUI();}
+  const c=DB.chapters[curChap], wc=countWords(c.content||'');
+  const all=DB.chapters.reduce((s,x)=>s+countWords(x.content||''),0);
+  const a=activeCfg('draft_llm');
+  const target=DB.theme._wordTarget||3000;
+  const short = wc>0 && wc < target*0.7;
+
+  return `
+  <div class="view-head"><h2>AI 写作</h2>
+  <p>第三步。AI 会依据架构、大纲、前文与前情生成正文。生成结果先进入预览区，你确认后再写入正文框。</p></div>
+
+  <div class="row" style="margin-bottom:13px">
+    <select id="chapSel" style="max-width:340px">
+      ${DB.chapters.map((x,i)=>`<option value="${i}" ${i===curChap?'selected':''}>
+        第 ${i+1} 章 ${x.title?'· '+x.title:''}</option>`).join('')}
+    </select>
+    <span class="pill" id="wcNow">本章 ${fmt(wc)} 字</span>
+    <span class="pill" id="wcAll">全书 ${fmt(all)} 字</span>
+    <span class="pill">目标 ${fmt(target)} 字</span>
+  </div>
+
+  <div class="card">
+    <div class="card-t">
+      <span>AI 生成正文
+        <span class="hint">${a?esc(a.name)+' · '+esc(a.cfg.model_name):'未配置模型'}</span></span>
+      <span class="row">
+        <button class="btn" id="btnBuildPrompt">查看提示词</button>
+        <button class="btn primary" id="btnGenChapter" ${a?'':'disabled'}>生成第 ${curChap+1} 章</button>
+      </span>
+    </div>
+    <div class="field"><label class="f">本章额外指导（可选，会附加到提示词）</label>
+      <textarea rows="2" id="chapGuide" placeholder="例如：这一章的重点是母亲不说话的那三个动作，不要解释她的心理">${esc(c.guide||'')}</textarea></div>
+    <div class="row" id="chapGuideChips" style="margin-top:7px;gap:6px;flex-wrap:wrap;align-items:center">
+      ${chapGuideChipHtml(c.guide||'')}
+    </div>
+    <div class="ai-meta" id="chapMeta"></div>
+    <div class="ai-out" id="chapOut"></div>
+    <div class="row" style="margin-top:11px" id="chapActions" hidden>
+      <button class="btn primary" id="btnApplyDraft">写入正文</button>
+      <button class="btn" id="btnAppendDraft">追加到正文末尾</button>
+      <button class="btn" id="btnCopyDraft">复制</button>
+      <span class="hint" style="font-size:11px;color:var(--ink-3)" id="draftWc"></span>
     </div>
   </div>
 
-  <script type="module" src="app.js"></script>
-  <script>
-    window.addEventListener('DOMContentLoaded', function () {
-      if (window.lucide && window.lucide.createIcons) {
-        window.lucide.createIcons();
+  <div class="card">
+    <div class="card-t"><span>本章正文</span>
+      <span class="row">
+        ${short?`<button class="btn" id="btnExpand">扩写到 ${fmt(target)} 字</button>`:''}
+        <button class="btn" id="btnReview">一致性审校</button>
+        <button class="btn" id="btnSummary">生成本章摘要</button>
+        <button class="btn primary" id="btnFinalize">定稿本章</button>
+      </span></div>
+    <textarea class="ms" id="ms" data-bind="chapters.${curChap}.content"
+      placeholder="可以直接手写，也可以用上方 AI 生成后写入……">${esc(c.content||'')}</textarea>
+    <div class="ai-meta" id="msMeta"></div>
+    <div class="ai-out" id="auxOut"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-t">
+      <span>AI 修订本章
+        <span class="hint">在已写好的草稿上增删改，不必重写全章</span></span>
+      <span class="row">
+        <span class="pill" id="selInfo" style="background:var(--panel-2)">未选中文本</span>
+      </span>
+    </div>
+
+    <div class="field">
+      <label class="f">修改要求 <span style="color:var(--ink-3)">— 越具体越好，直接说想改什么</span></label>
+      <textarea rows="3" id="revInstruction" placeholder="例如：&#10;· 把第二段那段独白删掉，改成他用动作表现（点燃一支烟，又摁灭）&#10;· 在「你确定吗」之后增加一段他犹豫的细节，约 200 字&#10;· 结尾太快了，补一个他走出大楼、天已经黑的过渡&#10;· 场景描写太空，加两处气味和声音">${esc(c._revNote||'')}</textarea>
+      <div class="row" id="revGuideChips" style="margin-top:7px;gap:6px;flex-wrap:wrap">
+        ${revGuideChipHtml(c._revNote||'')}
+      </div>
+    </div>
+
+    <div class="grid3">
+      <div class="field"><label class="f">修改模式</label>
+        <select id="revMode">
+          <option value="selection">局部修订（仅改选中的片段）</option>
+          <option value="full">整章重写（按要求重写全章）</option>
+          <option value="insert">增写情节（在文中插入新段落）</option>
+          <option value="cut">删改情节（删除／压缩指定内容）</option>
+          <option value="polish">润色改写（只改语言，不动情节）</option>
+        </select></div>
+      <div class="field"><label class="f">修改后目标字数</label>
+        <input type="number" id="revTarget" value="${target}" step="500"></div>
+      <div class="field"><label class="f">使用模型</label>
+        <input type="text" value="${a?esc(a.name)+' · '+esc(a.cfg.model_name):'未配置模型'}" disabled
+          style="background:var(--panel-2);color:var(--ink-2)"></div>
+    </div>
+
+    <div class="alert" id="selTip" style="display:none;background:var(--blue-soft);color:var(--blue);border:1px solid #b5d4f4;margin:0 0 11px"></div>
+
+    <div class="row">
+      <button class="btn primary" id="btnRevise" ${a&&wc?'':'disabled'}>执行修订</button>
+      <button class="btn" id="btnRevisePrompt">查看提示词</button>
+      <button class="btn" id="btnRevUseSel">把选中内容填入要求框</button>
+      <span style="flex:1"></span>
+      <span class="hint" style="font-size:11px;color:var(--ink-3)"></span>
+    </div>
+    ${!wc?`<div class="alert warn" style="margin:11px 0 0">本章还没有正文，请先用上方生成或手写内容，再来修订。</div>`:''}
+
+    <div class="ai-meta" id="revMeta"></div>
+    <div class="row" id="revViewBar" hidden style="margin:10px 0 0;gap:12px">
+      <span class="diff-legend">
+        <i class="d">删去</i><i class="a">增添</i>
+      </span>
+      <span id="revStat" style="font-size:12px;color:var(--ink-3)"></span>
+      <span style="flex:1"></span>
+      <button class="btn sm" id="btnRevToggle">切换为纯文本</button>
+    </div>
+    <div class="ai-out" id="revOut"></div>
+    <div class="row" style="margin-top:11px" id="revActions" hidden>
+      <button class="btn primary" id="btnApplyRevise">应用到正文</button>
+      <button class="btn" id="btnCopyRevise">复制</button>
+      <span class="hint" style="font-size:11px;color:var(--ink-3)" id="revWc"></span>
+    </div>
+    <div class="row" style="margin-top:9px">
+      <button class="btn sm" id="btnRevUndo" ${(reviseUndo&&reviseUndo.chapterNo===curChap+1)?'':'hidden'}>撤销上一次修订</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-t">
+      <span>前文摘要</span>
+      <span class="row">
+        <button class="btn sm" id="btnRebuildSum">重算汇总</button>
+        ${(DB.summaryCfg&&DB.summaryCfg._undo)?`
+        <button class="btn sm" id="btnUndoClearSum">撤销清空（${esc(formatClearTime(DB.summaryCfg._undo.at))}）</button>`:''}
+        <button class="btn sm danger" id="btnClearAllSum" ${hasAnySummary()?'':'disabled'}>清空整体摘要</button>
+        <button class="btn sm" id="btnToggleSumMode">${(DB.summaryCfg||DEFAULT_SUM).mode==='manual'?'切换为自动汇总':'切换为手动编辑'}</button>
+      </span>
+    </div>
+    <div id="sumClearPanel" hidden></div>
+    <div id="sumInfo">${summaryInfoHtml()}</div>
+    <div id="sumDiffNote" style="font-size:12px;margin-top:8px"></div>
+
+    <div class="field" style="margin-top:12px">
+      <label class="f">本章摘要 <span style="color:var(--ink-3)">— 单章独立保存，是整体摘要的组成单元</span></label>
+      <textarea rows="4" id="chapSumBox" placeholder="点上方「生成本章摘要」自动生成。这一份只描述本章，不会被后续章节改写，所以不会漂移。">${esc(c.sum||'')}</textarea>
+      <div class="row" style="margin-top:7px">
+        <button class="btn sm" id="btnSaveChapSum">保存本章摘要</button>
+        <button class="btn sm" id="btnClearChapSum">清空本章</button>
+        <span class="hint" style="font-size:11px;color:var(--ink-3)" id="chapSumWc">${countWords(c.sum||'')} 字</span>
+      </div>
+    </div>
+
+    ${(DB.summaryCfg||DEFAULT_SUM).mode==='manual'?`
+    <div class="field">
+      <label class="f">整体摘要（手动模式）<span style="color:var(--ink-3)"> — 手动模式下 AI 会读这一段</span></label>
+      <textarea rows="6" id="sumPreview" placeholder="手动写整段摘要……">${esc(buildSummaryText())}</textarea>
+    </div>`:`
+    <div class="field">
+      <label class="f">整体摘要预览 <span style="color:var(--ink-3)"> — 由各章摘要自动拼装，只读</span></label>
+      <textarea rows="6" id="sumPreview" readonly style="background:var(--panel-2)">${esc(buildSummaryText())}</textarea>
+      <div class="hint" style="font-size:11px;color:var(--ink-3);margin-top:6px">
+        这一段是 AI 生成后续章节时实际读到的内容。想改它，请改对应章节的「本章摘要」。
+      </div>
+    </div>`}
+  </div>`;
+};
+
+/* ---------- 模型配置 ---------- */
+let cfgTab='llm';
+V.model=()=>{
+  const names=Object.keys(DB.ai.configs);
+  const cur=DB.ai.last_config;
+  const c=DB.ai.configs[cur]||{};
+  const fmt=c.interface_format||'OpenAI';
+  const isLocal=/ollama/i.test(fmt);
+  /* 「写作辅助」卡片放在三元之外，两个标签页都显示 */
+  const guideCard = `  <div class="card">
+    <div class="card-t">写作辅助 <span class="hint">影响提示词里附带什么</span></div>
+    <div class="row">
+      <button class="btn ${guideAutoOn()?'primary':''}" id="btnGuideAuto">
+        ${guideAutoOn()?'✓ 自动匹配写作参考：开':'自动匹配写作参考：关'}
+      </button>
+      <button class="btn" id="btnGuideTop">每次最多 ${guideLimit()} 条</button>
+      <span style="flex:1"></span>
+      <span class="hint" style="font-size:11.5px;color:var(--ink-3)">
+        参考库共 ${GUIDE.length} 条 / ${GENRES.length} 个题材
+      </span>
+    </div>
+    <p style="font-size:12px;color:var(--ink-2);margin-top:11px;line-height:1.9">
+      开启后，生成正文与改稿时会把<b>本章标题、简述、额外指导</b>与参考库比对，
+      自动挑出最相关的几条附在提示词里。<br>
+      匹配不上时<b>不会强行注入</b>——宁可少给，也不塞无关的技巧。
+      想知道具体带了哪几条，点「查看提示词」就能看到全文。
+    </p>
+  </div>`;
+  return `
+  <div class="view-head"><h2>模型配置</h2>
+  <p>接入方式参照 AI_NovelGenerator：多套预设配置 + 按任务分配模型。请求由你的浏览器直接发往服务商，不经过任何中间服务器。</p></div>
+
+  <div class="alert ok">
+    <b>推荐 DeepSeek</b>：本地网页直连已实测可用（返回 <code>access-control-allow-origin: null</code>，正好匹配 file:// 页面）。
+    Key 只存在你自己的浏览器里。
+  </div>
+
+  <div class="tabs">
+    <button class="tab ${cfgTab==='llm'?'on':''}" data-cfgtab="llm">LLM 配置</button>
+    <button class="tab ${cfgTab==='route'?'on':''}" data-cfgtab="route">任务分配</button>
+  </div>
+
+  ${cfgTab==='llm'?`
+  <div class="card">
+    <div class="card-t">配置列表 <span class="hint">共 ${names.length} 套</span></div>
+    <div class="row" style="margin-bottom:12px">
+      ${names.map(n=>`<button class="btn ${n===cur?'primary':''}" data-cfgsel="${esc(n)}">${esc(n)}</button>`).join('')}
+      <button class="btn" id="btnCfgAdd">+ 新增</button>
+    </div>
+    <div class="grid2">
+      <div class="field"><label class="f">配置名称</label>
+        <input type="text" id="cfgName" value="${esc(cur)}"></div>
+      <div class="field"><label class="f">接口格式</label>
+        <select id="cfgFmt">
+          ${['DeepSeek','OpenAI','SiliconFlow','Gemini','Ollama'].map(f=>
+            `<option ${fmt===f?'selected':''}>${f}</option>`).join('')}
+        </select></div>
+    </div>
+    <div class="field">
+      <label class="f">API Key ${isLocal?'<span style="color:var(--teal)">（本地模型无需填写）</span>':''}</label>
+      <div class="row" style="gap:8px">
+        <input type="password" id="cfgKey" value="${esc(sanitizeKey(c.api_key)||'')}"
+          placeholder="${isLocal?'本地模型留空即可':'sk-...'}" style="flex:1;min-width:200px">
+        <button class="btn sm" id="btnKeyEye" type="button">显示</button>
+        <button class="btn sm" id="btnKeyClean" type="button">清洗</button>
+      </div>
+      <div id="keyDiag" style="margin-top:7px"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label class="f">Base URL</label>
+        <input type="text" id="cfgUrl" value="${esc(c.base_url||'')}"></div>
+      <div class="field"><label class="f">模型名称</label>
+        <input type="text" id="cfgModel" value="${esc(c.model_name||'')}"></div>
+    </div>
+    <div class="grid4">
+      <div class="field"><label class="f">temperature</label>
+        <input type="number" id="cfgTemp" value="${c.temperature??0.7}" step="0.1" min="0" max="2"></div>
+      <div class="field"><label class="f">max_tokens</label>
+        <input type="number" id="cfgMax" value="${c.max_tokens??8192}" step="1024"></div>
+      <div class="field"><label class="f">timeout（秒）</label>
+        <input type="number" id="cfgTimeout" value="${c.timeout??600}" step="60"></div>
+      <div class="field"><label class="f">流式输出</label>
+        <select id="cfgStream">
+          <option value="1" ${DB.ai.streaming?'selected':''}>开启（推荐）</option>
+          <option value="0" ${!DB.ai.streaming?'selected':''}>关闭</option>
+        </select></div>
+    </div>
+    ${(()=>{
+      const tm=c.thinking_mode || (fmt==='DeepSeek'?'disabled':'default');
+      const isDS=fmt==='DeepSeek';
+      return `<div class="field">
+        <label class="f">思考模式 ${isDS?'<span style="color:var(--amber)">（DeepSeek 请务必设为「关闭」）</span>':''}</label>
+        <select id="cfgThink">
+          <option value="disabled" ${tm==='disabled'?'selected':''}>关闭（推荐 · 写小说不需要长思维链）</option>
+          <option value="default" ${tm==='default'?'selected':''}>不传（沿用服务端默认）</option>
+          <option value="enabled" ${tm==='enabled'?'selected':''}>开启</option>
+        </select>
+        <div style="font-size:11.5px;color:var(--ink-3);margin-top:5px;line-height:1.7">
+          DeepSeek 官方默认<b>开启思考且强度为 high</b>，思维链会占掉大量 token，
+          导致正文为空（即「模型返回内容为空」错误）。
+          ${isDS?`写小说请选<b>「关闭」</b>。`:``}
+          其他厂商不传此字段，避免严格接口拒绝未知参数。
+        </div>
+      </div>`;
+    })()}
+    <div class="row" style="margin-top:6px">
+      <button class="btn primary" id="btnCfgSave">保存配置</button>
+      <button class="btn" id="btnCfgTest">测试连接</button>
+      ${names.length>1?`<button class="btn danger" id="btnCfgDel">删除此配置</button>`:''}
+    </div>
+    <div id="cfgTestMsg" style="margin-top:10px;font-size:12px;color:var(--ink-3)"></div>
+  </div>
+  <div class="card">
+    <div class="card-t">快速套用预设</div>
+    <div class="row">
+      ${Object.keys(PRESETS).map(k=>`<button class="btn sm" data-preset="${esc(k)}">${esc(k)}</button>`).join('')}
+    </div>
+    <p style="font-size:12px;color:var(--ink-3);margin-top:9px">
+      点预设会填入当前配置的 URL、模型名、接口格式，你只需补 API Key。
+    </p>
+  </div>`:`
+  <div class="card">
+    <div class="card-t">按任务分配模型 <span class="hint">不同任务可以用不同模型，兼顾成本与质量</span></div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr>
+        <th style="text-align:left;font-size:11px;color:var(--ink-3);padding:0 0 9px;font-weight:400">任务</th>
+        <th style="text-align:left;font-size:11px;color:var(--ink-3);padding:0 0 9px;font-weight:400">使用模型</th>
+      </tr></thead>
+      <tbody>
+      ${TASKS.map(t=>`
+        <tr>
+          <td style="padding:6px 0;vertical-align:top">
+            <div style="font-size:13px">${t.n}</div>
+            <div style="font-size:11px;color:var(--ink-3)">${t.d}</div></td>
+          <td style="padding:6px 0 6px 12px">
+            <select data-task="${t.k}">
+              ${names.map(n=>`<option ${DB.ai.choose[t.k]===n?'selected':''}>${n}</option>`).join('')}
+            </select></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <p style="font-size:12px;color:var(--ink-2);margin-top:12px;line-height:1.85">
+      <b>建议</b>：架构和大纲用能力强的模型（如 DeepSeek V4 Pro），
+      摘要维护这类机械任务用便宜快的模型（如 V4 Flash），
+      能显著降低成本。
+    </p>
+  </div>`}
+` + guideCard;
+};
+
+/* ---------- 写作参考 ---------- */
+/* ============ 写作参考库 ============
+   两个维度：g=题材大类，cat=子类（结构/人物/技法…）。
+   题材与作品类型对应，写什么题材就先筛什么题材；通用一栏适用于所有题材。 */
+const GENRES=['通用','科幻','玄幻','奇幻','武侠','言情','悬疑','恐怖','历史','都市'];
+
+const GUIDE=[
+  /* ---------------- 通用 ---------------- */
+  {g:'通用',cat:'结构',n:'三幕结构：把「改变」切成三段',
+   d:'第一幕建立常态并打破它（约 1/4）；第二幕升级对抗、逼主角付出代价（约 1/2）；第三幕让他用新的自己解决旧的问题（约 1/4）。关键不在比例，而在「每一幕结束时主角的处境都比上一幕更糟，且退路更少」。'},
+  {g:'通用',cat:'结构',n:'场景 = 目标 + 冲突 + 转折',
+   d:'每个场景都要有人想要什么、有什么挡着、最后发生了什么改变。三者缺一，这个场景就可以删。写完一章后逐场景检查：如果删掉它剧情不变，那它只是氛围，不该占正文章节。'},
+  {g:'通用',cat:'结构',n:'场景之后要有「反应」',
+   d:'场景（goal→conflict→disaster）之后必须跟一个反应段（reaction→dilemma→decision），否则读者没时间消化，主角变成只会闯祸的木偶。连写三个场景没有反应段，读者会疲劳；连写三段反应没有场景，读者会无聊。'},
+  {g:'通用',cat:'结构',n:'中点转折：让主角从被动变主动',
+   d:'第二幕中段要有一次「主动选择」——之前他被事件推着走，之后他开始推着事件走。这个选择往往基于一个错误认知，而第三幕的高潮就是纠正它的代价。'},
+  {g:'通用',cat:'结构',n:'悬念 vs 惊奇：读者该提前知道多少',
+   d:'惊奇是「读者不知道，突然被告知」；悬念是「读者知道，人物不知道」。悬念的张力更持久——读者会一直替人物着急。 Hitchcock 的说法：炸弹在桌下，人物聊天，观众全程不安，这是悬念；炸弹突然爆炸，这只是三十秒的惊奇。长篇靠悬念撑，惊奇只用来点缀。'},
+  {g:'通用',cat:'结构',n:'三种结尾：闭合 / 开放 / 回环',
+   d:'闭合结尾回答主要问题，给情绪落点（类型小说的默认选择）；开放结尾留一个未解的问题，但必须让「人物已经改变」这件事确定，否则读者会觉得没写完；回环结尾让最后一句呼应第一句，用同一个意象但含义已变。'},
+  {g:'通用',cat:'人物',n:'欲望 / 恐惧 / 谎言：人物三件套',
+   d:'他想要什么（外在目标）、他怕什么（阻碍他行动的）、他相信什么错的东西（限制他成长的信念）。第三个最难写，也最能让读者记住一个人物。人物弧光就是「谎言被现实击碎」的过程。'},
+  {g:'通用',cat:'人物',n:'三种弧光：正向、负向、平坦',
+   d:'正向弧光＝击碎谎言（最常见）；负向弧光＝拒绝面对，最终被谎言吞噬（悲剧、反派起源）；平坦弧光＝人物信念不变，但他把信念带进了一个需要它改变的世界，从而改变了世界（群像、系列主角）。先决定用哪一种，再写每一幕。'},
+  {g:'通用',cat:'人物',n:'秘密比动机更能撑情节',
+   d:'动机解释他为什么出发，秘密决定他什么时候崩。给每个主要人物写一条「他绝不会说出口的事」，然后安排一个场景逼它浮出水面。'},
+  {g:'通用',cat:'人物',n:'反派要有一句让人无法反驳的话',
+   d:'好的对手不是「坏」，而是「用另一种逻辑也说得通」。给他一句让读者短暂动摇的台词，冲突立刻从善恶对立升级为价值对立。'},
+  {g:'通用',cat:'技法',n:'对话写潜台词，不写信息',
+   d:'人物不会直接说出自己的目的。让他们谈 A，实际在博弈 B。检验方法：把台词逐句读一遍，如果每句都在传递信息、没有一句在回避或试探，这段对话就是说明书。'},
+  {g:'通用',cat:'技法',n:'用动作承载情绪，不用形容词',
+   d:'「他很愤怒」是报告，「他把杯子放回去时，杯底磕在桌沿上，又扶了一下」是小说。情绪要通过可被镜头拍到的动作表现。'},
+  {g:'通用',cat:'技法',n:'五感配比：不要只写眼睛',
+   d:'新手九成句子是视觉。刻意加入嗅觉与触觉——它们最直接、最难防御，也最能唤起记忆。一段环境描写里至少放一个非视觉细节，质感立刻不同。'},
+  {g:'通用',cat:'技法',n:'母题复现：同一个意象写三次',
+   d:'选一个意象（雨、镜子、某把钥匙），在三个关键时刻各出现一次：第一次是日常，第二次在压力下变形，第三次带着全新的含义回来。三次之后，读者会自动把它读成主题。'},
+  {g:'通用',cat:'技法',n:'伏笔：埋的时候要像闲笔',
+   d:'伏笔在埋设时不能显眼，回收时才会让人回头看。原则是「第一次出现时至少承担两个功能」——比如某个物件既推进了当下的场景，又暗含后文的用途。'},
+  {g:'通用',cat:'技法',n:'节奏：紧张两章，必须有缓冲',
+   d:'连续的高强度会让读者麻木。每 2-3 个紧张章节后给一个缓冲章（关系推进、信息揭示、日常质感），下一个高潮才有落差可用。'},
+  {g:'通用',cat:'技法',n:'开篇的三种常见失败',
+   d:'① 从起床写起（没有张力）；② 先讲三百字世界观（读者还没理由关心）；③ 用梦或回忆杀开场（读者会觉得自己被骗）。可靠的替代：从一个已经出错的动作切入，让世界观在人物应对错误时自然浮现。'},
+  {g:'通用',cat:'视角',n:'不可靠叙述者：让读者比叙述者知道得更多',
+   d:'第一人称叙述者可以有盲区、有偏见、有他不愿承认的事。让他的判断与读者看到的事实产生裂缝，读者会自动参与解读——这是长篇最省力的沉浸感来源。'},
+  {g:'通用',cat:'视角',n:'一个场景只能有一个「脑子」',
+   d:'视角跳跃（head-hopping）是最伤沉浸感的错误：上一句在他脑子里，下一句忽然进她的脑子。同一场景内锁死一个视角人物；要换，用分章或空行分隔，别在一段里换。'},
+  {g:'通用',cat:'世界',n:'冰山原则：只写露出水面的 1/8',
+   d:'你设定的九成不该出现在正文里。读者感知世界的方式是「人物被它限制」，不是「作者介绍它」。检验方法：每条设定都问一句「它在哪个场景里让人物没了选择？」'},
+  {g:'通用',cat:'世界',n:'规则要能被违反，才有戏',
+   d:'一条没人能违反的规则只是背景。让规则有代价、有例外、有执法者——然后让主角面对「违反一次能救人」的处境。'},
+  {g:'通用',cat:'修改',n:'初稿只求写完，不求写好',
+   d:'初稿中途反复回头改，是长篇最常见的死法。先把故事写完，获得一个「可以整体判断」的对象，再回头修。修改能力与写作能力是两种能力，不要同时使用。'},
+  {g:'通用',cat:'修改',n:'修改分三层，顺序不能颠倒',
+   d:'第一层：结构（删场景、调顺序、修因果）；第二层：场景（补冲突、改转折）；第三层：句子（节奏、用词、标点）。先做句子会白费功夫——被删的场景里，句子再美也没用。'},
+  {g:'通用',cat:'修改',n:'删掉前 30%',
+   d:'绝大多数初稿的真正开头在第三、四章。前 30% 往往在「暖身」，藏着大量解释性内容。把前 30% 砍掉三分之一试试，故事常常立刻变快。砍之前先备份。'},
+  {g:'通用',cat:'修改',n:'朗读一遍，标出你换气的地方',
+   d:'句子太长、从句套从句、缺标点——这些在默读时看不出，读出声立刻暴露。凡是读到一半需要换气的地方，就断句。'},
+
+  /* ---------------- 科幻 ---------------- */
+  {g:'科幻',cat:'设定',n:'单一变量推演：只改一件事',
+   d:'好的科幻通常只改变现实中的一个变量（一项技术、一条物理法则、一次历史分叉），然后严格推演它的全部后果。改得越多，逻辑越容易崩，读者越不信。动笔前问自己：我改的到底是哪一件？'},
+  {g:'科幻',cat:'设定',n:'设定硬化程度：硬科幻与软科幻是两种写法',
+   d:'硬科幻把技术当主角，读者期待自洽的物理解释；软科幻把技术当舞台，重点在社会与人心。最糟的是「中间态」——技术上说不通，却又要装得很严谨。选定一端，然后守住它。'},
+  {g:'科幻',cat:'设定',n:'认知陌生化：让熟悉的东西变奇怪',
+   d:'科幻的快感来自「重新看见日常」。方法：用外来者视角审视人类习以为常的仪式（葬礼、上班、恋爱），把它当成一种陌生的风俗来描述。不要评论，只描述。'},
+  {g:'科幻',cat:'设定',n:'技术的社会摩擦，才是故事发生的地方',
+   d:'技术本身不产生故事，技术撞上制度、习俗、利益才产生故事。写「这项技术出现了」很无聊；写「这项技术让某个职业消失了，而那个人还没找到新身份」才有戏。'},
+  {g:'科幻',cat:'技法',n:'解释的时机：先让人物用，再让读者懂',
+   d:'不要在设定第一次出现时解释它。先让人物熟练地使用（读者靠上下文猜），在他遇到麻烦、必须解释的那一刻，才把原理说出来——此时读者有求知欲，说明才不烦人。'},
+  {g:'科幻',cat:'技法',n:'大尺度时间，要落在人的尺度上',
+   d:'动辄万年、光年的叙事容易空转。让宏大尺度只做背景，前景始终是具体的人在做具体的选择（今天要不要回那条消息）。读者只能对一个人的晚饭共情，不能对银河系共情。'},
+  {g:'科幻',cat:'结构',n:'第一次接触：难点不是语言，是意图',
+   d:'外星/异类的第一次接触，真正的戏剧在于「双方都无法确认对方的意图」。不要急着翻译成功，要让误读持续得足够久，每一个善意的举动都被读成威胁。'},
+  {g:'科幻',cat:'结构',n:'反乌托邦的三个陷阱',
+   d:'① 反派太蠢（制度只要一个聪明人就能推翻）；② 主角的觉醒太轻易（听一段演讲就反了）；③ 世界只有压抑没有快乐（读者会怀疑为什么没人反抗）。修补方法：给制度一个真实的合理性，给顺从者一个体面的理由。'},
+  {g:'科幻',cat:'结构',n:'提问法：如果……会怎样',
+   d:'科幻的引擎是一个具体的「如果」。不要停在概念层面，一路问下去：如果记忆可以买卖 → 谁在卖 → 为什么卖 → 买来做什么 → 社会怎么防止伪造 → 谁在监管、谁在钻空子。问到第五层，故事就出来了。'},
+
+  /* ---------------- 玄幻 / 仙侠 ---------------- */
+  {g:'玄幻',cat:'体系',n:'力量体系先写「成本」，再写「强度」',
+   d:'读者不在乎主角有多强，在乎他为了变强付出什么。每条力量路径都要有明确的代价（寿命、记忆、人性、亲缘）。没有成本的力量体系，所有冲突都会失效。'},
+  {g:'玄幻',cat:'体系',n:'境界 = 读者的进度条',
+   d:'境界划分的本质功能是提供可感知的进步刻度。层级不宜过多（五到九层为宜），每一层必须有质变而非量变，且主角每次突破都要带来一个新的麻烦——否则升级就是自嗨。'},
+  {g:'玄幻',cat:'体系',n:'金手指要有限制，否则故事会死',
+   d:'无敌的主角没有故事。给金手指三条硬限制（使用次数、触发条件、不可逆的副作用），并让它至少失效一次，逼主角用人的方式解决问题。'},
+  {g:'玄幻',cat:'体系',n:'资源逻辑：修真世界的经济学',
+   d:'灵石、丹药、功法本质是稀缺资源。想清楚谁产出、谁分配、谁垄断。一旦资源逻辑成立，门派斗争、师徒反目、拍卖会、秘境争夺全都自动有了动机。'},
+  {g:'玄幻',cat:'节奏',n:'爽感的本质：预期兑现 + 略微超出',
+   d:'爽不是「主角赢了」，是「读者等的那一下来了，而且比想象中更好」。所以必须先建立期待（他被轻视、他被逼到墙角），再延迟兑现（多拖一章），最后给出超出预期的解法。直接赢，没有爽感。'},
+  {g:'玄幻',cat:'节奏',n:'日常流水的变奏',
+   d:'修炼、炼丹、赶路这些重复桥段，是长篇的骨架也是疲劳源。原则：同类桥段第三次出现时必须变奏——换视角、换代价、换结果。读者能忍受重复，但不能忍受一模一样的重复。'},
+  {g:'玄幻',cat:'节奏',n:'地图扩张的节奏',
+   d:'从村到城到国到界，每换一次地图都要重置一次「他又是最弱的」。地图扩张的意义不是变大，而是让旧的规则失效、旧的关系重构。如果新地图只是更强的敌人，读者会疲。'},
+  {g:'玄幻',cat:'战斗',n:'打斗写判断，不写招式',
+   d:'「他一掌拍出，罡风大作」读者记不住。真正抓人的是判断：他为什么选这一招、他判断错了什么、他在第几招意识到自己要输。让读者跟着主角的思路走，招式名只是标点。'},
+  {g:'玄幻',cat:'世界',n:'宗门是利益结构，不是背景板',
+   d:'门派要有资源来源、晋升通道、派系斗争、对外关系。写清「谁说了算、凭什么、谁不服」，门派内部的戏就能自己长出来，不需要靠反派使坏推动。'},
+
+  /* ---------------- 奇幻 ---------------- */
+  {g:'奇幻',cat:'体系',n:'魔法系统三定律（Sanderson）',
+   d:'① 读者的理解程度决定他能感受到的解决难度——作者用魔法解决问题时，必须先让读者懂这个魔法的限制；② 限制比能力更有趣；③ 先想清楚代价，再想效果。这三条几乎是西幻设定的通用准则。'},
+  {g:'奇幻',cat:'世界',n:'种族不是皮肤，是制度',
+   d:'精灵长寿、矮人善锻——这些只是标签。真正让种族立起来的是：长寿者如何面对短命的朋友、锻造公会如何垄断技术、种族之间谁欠谁的钱。让种族差异体现在法律、经济、婚姻制度上。'},
+  {g:'奇幻',cat:'世界',n:'神话要留裂缝',
+   d:'世界的创世神话不该是标准答案，而该是「有版本的、互相矛盾的、被政治利用过的」。让不同地区对同一件事有不同说法，读者会自己往里填想象。'},
+  {g:'奇幻',cat:'结构',n:'旅途结构的疲劳点',
+   d:'「出发—遇敌—扎营—再出发」的循环最多撑三段。破解方法：让旅途的目的在中途改变，或者让队伍在中途分裂，或者让「到达目的地」变成一个坏消息。'},
+  {g:'奇幻',cat:'技法',n:'魔法要有质感，不能只有光效',
+   d:'魔法的描写要落到身体感受与物质后果上：施法后手指发麻、房间里有金属味、墙上的画歪了。只写「一道耀眼的光芒」，读者什么也看不见。'},
+  {g:'奇幻',cat:'世界',n:'地图不是装饰，是政治',
+   d:'山脉决定贸易路线，河流决定城市位置，关隘决定谁收税。画地图时先问：谁控制了要道、谁被隔在外面、哪两个文明永远打不到对方。地理一旦合理，战争与联盟都有了理由。'},
+
+  /* ---------------- 武侠 ---------------- */
+  {g:'武侠',cat:'世界',n:'江湖是关系网，不是地图',
+   d:'江湖的实质是一套脱离官方法律的秩序：恩怨、师承、规矩、面子。地图不重要，谁欠谁一条命才重要。写江湖先写清「这里的规矩是什么、谁在维护、破坏规矩的代价」。'},
+  {g:'武侠',cat:'世界',n:'武功的政治性',
+   d:'一门绝世武功从来不只是武力，它是资源、是继承权、是门派存续的筹码。围绕一门武功的争夺，本质是围绕权力分配的争夺——这比「抢秘籍」深得多。'},
+  {g:'武侠',cat:'战斗',n:'一招一式的「重量」',
+   d:'武侠的美感来自克制的精确：写清距离、时机、呼吸、兵器的分量。不要写「大战三百回合」，写「他的刀在第三招慢了半寸」。慢半寸，就是全部的戏剧。'},
+  {g:'武侠',cat:'人物',n:'「侠」的定义随时代变',
+   d:'司马迁的侠是「其言必信，其行必果」；金庸的侠是「为国为民」；古龙的侠是「为自己的原则」。选定你要写哪一种，因为它决定了主角在关键时刻会放弃什么。'},
+  {g:'武侠',cat:'战斗',n:'兵器要有辨识度',
+   d:'不要给每个角色都配剑。刀是劈，剑是刺，鞭是控距，暗器是偷袭——兵器决定了打斗的语法，也暗示了使用者的性格与出身。让读者看到兵器就知道是谁来了。'},
+  {g:'武侠',cat:'世界',n:'武侠真正写的是「人情债」',
+   d:'武功解决不了的，才是武侠的核心：救命之恩怎么还、师门血仇要不要报、答应了死人的事能不能反悔。每一笔人情债都要在结尾结清或明确不结，读者要的是这个账。'},
+
+  /* ---------------- 言情 ---------------- */
+  {g:'言情',cat:'情感',n:'情感节拍：靠近—退开—再靠近',
+   d:'感情线的基本单位是「节拍」，每个节拍包含一次靠近和一次退开。只靠近不退开，感情会平；只退开不靠近，读者会烦。每次退开都要有理由（恐惧、误会、外部压力），而且这个理由要一次比一次更难克服。'},
+  {g:'言情',cat:'情感',n:'拉扯的本质是信息不对称',
+   d:'读者觉得「拉扯好看」，是因为两个人掌握的信息不同：他知道她喜欢他，她不知道他知道；或者两人都以为对方不喜欢自己。设计感情线，先设计信息差，再设计动作。'},
+  {g:'言情',cat:'情感',n:'误会必须符合人物智力',
+   d:'最毁好感的写法是「一句话就能解释清楚，但两人就是不解释」。修补方法：让不解释本身有理由——自尊、承诺、怕伤害第三人、说了就会失去对方。误会可以狗血，但理由必须成立。'},
+  {g:'言情',cat:'情感',n:'双向暗恋：让读者比两人都急',
+   d:'双向暗恋的爽点在于读者掌握全知视角。写法：交替视角，让读者看到两人各自的心事与误判；关键是让「差一点就说出口」的场景重复出现但每次更接近，第三次必须真的说出口。'},
+  {g:'言情',cat:'情感',n:'亲密戏的留白',
+   d:'写得越满，越像说明书。真正动人的是临界点之前：手停在半空、呼吸变了、谁先移开视线。把镜头交给感官与犹豫，把结果留给读者。'},
+  {g:'言情',cat:'结构',n:'冲突三层升级：外部 / 关系 / 自我',
+   d:'第一层是外部阻碍（家庭、身份、距离）；第二层是关系内部的裂痕（信任、隐瞒）；第三层是主角自己的问题（不配得感、恐惧亲密）。只写第一层会单薄，三层都写才有厚度。结局必须解决第三层。'},
+  {g:'言情',cat:'结构',n:'HE / BE 的铺垫责任',
+   d:'结局的合理性不取决于悲喜，取决于铺垫。要 HE，就得在前文埋下「他们有能力解决核心问题」的证据；要 BE，就得在前文埋下「这个问题他们解决不了」的证据。没有铺垫的结局，无论悲喜都会被骂。'},
+  {g:'言情',cat:'人物',n:'配角的功能性',
+   d:'每个配角都要承担一个功能：推动信息、制造阻碍、映照主角、提供退路。如果一个配角删掉后剧情毫无变化，那他不是配角，是背景。'},
+  {g:'言情',cat:'情感',n:'破镜重圆：先写「为什么当初不行」',
+   d:'重逢题材最大的坑是：读者会问「那当初为什么要分」。所以前半部必须把分手的原因写成「当时确实无解」，后半部再让那个原因失效（人变了、条件变了、代价付得起了）。否则复合只是强行发糖。'},
+
+  /* ---------------- 悬疑 / 推理 ---------------- */
+  {g:'悬疑',cat:'结构',n:'公平游戏：线索必须在明面上',
+   d:'推理小说的基本契约：破案所需的全部线索，读者在揭晓前都看到过。可以藏得巧，不能藏得没。揭晓后读者回头看能一一对上，才会佩服；反之只会觉得被骗。'},
+  {g:'悬疑',cat:'结构',n:'线索要显眼，但不能刺眼',
+   d:'最好的线索是「第一次出现时读者以为是别的用途」。让它在日常场景里承担一个自然的功能（比如一把伞只是在下雨），回收时才显出第二层意义。'},
+  {g:'悬疑',cat:'结构',n:'红鲱鱼的道德',
+   d:'误导读者是可以的，但必须「公平地误导」——嫌疑人的可疑行为要有合理的非犯罪解释，而不是作者故意隐瞒。若读者发现某人只是被作者拿来凑数，信任就崩了。'},
+  {g:'悬疑',cat:'结构',n:'时间线是推理的地基',
+   d:'动笔前先画一张精确到小时的时间线表，标出每个人在每个时刻在哪、和谁在一起、有谁知道。绝大多数逻辑漏洞，都是时间线没算清造成的。'},
+  {g:'悬疑',cat:'人物',n:'凶手动机的可信度',
+   d:'动机不需要高尚，但必须「对那个人来说足够」。检验方法：把动机单独说给一个陌生人听，他会不会说「就为这个？」。若会，就还不够重。'},
+  {g:'悬疑',cat:'结构',n:'反转的三种类型：信息 / 认知 / 身份',
+   d:'信息反转＝隐瞒的事实被揭露；认知反转＝读者对已知事实的理解被推翻；身份反转＝某人不是他自称的人。第三种最好用但最容易猜到，第一种最稳，第二种最震撼。一章里最多用一个。'},
+  {g:'悬疑',cat:'人物',n:'侦探不能比读者聪明太多',
+   d:'如果侦探靠读者看不到的直觉破案，读者不会有参与感。让侦探与读者拿到同样的信息，只是他更善于把碎片连起来——并且至少让他错一次。'},
+  {g:'悬疑',cat:'人物',n:'助手的作用是替读者提问',
+   d:'华生不是累赘，他是读者的代理人：他问出读者想问的蠢问题，让侦探有机会解释而不显得在炫耀。没有助手的侦探小说，解释部分会变成作者对读者说教。'},
+
+  /* ---------------- 恐怖 ---------------- */
+  {g:'恐怖',cat:'氛围',n:'恐惧来自「不该存在却存在」',
+   d:'怪物本身不可怕，可怕的是它破坏了世界的秩序：死者不该回来、镜子里不该多一个人、时间不该倒流。先建立「正常」，再让一处细节不对，恐惧就成立了。'},
+  {g:'恐怖',cat:'氛围',n:'揭示越少越可怕',
+   d:'一旦怪物被看清、被解释，恐惧就变成猎奇。把镜头停在「门缝里的影子」「地上多出来的一双鞋」上。读者自己想象出来的东西，永远比你写出来的更可怕。'},
+  {g:'恐怖',cat:'技法',n:'日常的错位',
+   d:'最有效的恐怖场景是熟悉的日常差了一点点：家里的餐桌多摆了一副碗筷、母亲叫你的小名但语气不对。不写血，写「不对劲」，读者的汗毛会自己立起来。'},
+  {g:'恐怖',cat:'技法',n:'身体恐怖的使用限度',
+   d:'身体恐怖见效快，但容易让人反感而非恐惧。控制在「少量、关键处、有心理依据」——身体的异变应当在象征主角的失控，而不是单纯的视觉刺激。'},
+  {g:'恐怖',cat:'结构',n:'恐怖的三段式：常态 / 异变 / 确认',
+   d:'先花足够篇幅建立「正常」（越具体越好），再放一处说不通的小细节（异变），最后让主角确认它真的存在（确认）。三段的比例约为 4:2:1。跳过第一段，后面的恐怖就没有落差。'},
+  {g:'恐怖',cat:'世界',n:'给恐怖设一条规则，然后让主角违反它',
+   d:'「午夜后不要开门」「不要回应第三次呼唤」——规则让恐惧有形状，也让读者能预判危险。真正的恐怖发生在主角不得不违反规则的那一刻，而不是怪物出现的那一刻。'},
+
+  /* ---------------- 历史 / 架空 ---------------- */
+  {g:'历史',cat:'质感',n:'时代质感来自「限制」',
+   d:'读者判断一个时代真不真，看的是人物「不能做什么」：不能随意出行、不能和异性独处、不能直呼上位者的名字。写清这些限制，时代感自己就出来了，比堆砌服饰名词有效十倍。'},
+  {g:'历史',cat:'结构',n:'制度逻辑先于事件',
+   d:'历史事件背后是制度与利益。写之前先想清楚：钱从哪来、兵听谁的、官怎么升、法由谁解释。制度对了，人物的每一个选择都会显得必然。'},
+  {g:'历史',cat:'技法',n:'语言分层：不同阶层不该说同一种话',
+   d:'帝王、文官、商人、农夫、仆役的用词、句长、礼节都不同。不需要写成古文，但要有区分：上位者句子短且少解释，下位者多敬语多试探。一句台词就能立住身份。'},
+  {g:'历史',cat:'世界',n:'架空也要有经济',
+   d:'虚构王朝也需要税收、粮价、盐铁、军费。一旦涉及战争或政变，先问「钱够不够」。经济是架空世界可信度的底盘，也是最好的冲突来源。'},
+  {g:'历史',cat:'人物',n:'别让古人说现代话',
+   d:'最容易出戏的不是词汇，是观念：个人权利、恋爱自由、平等意识、心理健康——这些现代默认值放进古代人物嘴里会立刻失真。让人物用他那个时代的逻辑思考，哪怕你不同意他。'},
+  {g:'历史',cat:'结构',n:'大事件要从小人物身上过',
+   d:'写战争不要写战报，写一个辎重兵在撤退路上丢了一只鞋。历史小说的说服力来自「大事件在具体身体上留下的痕迹」，而不是事件本身的规模。'},
+
+  /* ---------------- 都市 / 现实 ---------------- */
+  {g:'都市',cat:'结构',n:'生活流的张力从哪来',
+   d:'没有大反派的故事，张力来自「不可兼得」：想要晋升就得牺牲陪伴，想守住底线就会失去机会。把两个都合理的选择摆在一起，读者会替人物难受。'},
+  {g:'都市',cat:'质感',n:'职业细节的可信度',
+   d:'写某个行业，至少要掌握三件外行不知道的具体事（流程、黑话、常见的坑）。这三件事会让整本书的可信度提升一个档次。查资料的成本远低于编造被识破的代价。'},
+  {g:'都市',cat:'技法',n:'口语化程度要统一',
+   d:'对话太书面会假，太像真实口语（大量「那个」「就是说」）会难读。折中：保留口语的语序和省略，删掉无意义的填充词。读起来像人说的，但不是录音。'},
+  {g:'都市',cat:'结构',n:'现实题材的「意义」问题',
+   d:'现实题材没有类型小说的天然终点（打败反派、破案、在一起）。所以要提前决定：这本书结束时，主角对生活的理解发生了什么变化？用一个具体的、可验证的事件来承载这个变化，而不是靠感慨收尾。'},
+  {g:'都市',cat:'质感',n:'空间感：让城市有具体的坐标',
+   d:'不要只写「城市」。写清通勤要多久、房租占收入多少、哪条街晚上没人、便利店几点关门。人物被空间限制的方式，就是他阶层的说明。'},
+  {g:'都市',cat:'结构',n:'副线要压主线，不能只是陪衬',
+   d:'好的副线会在某个节点逼主角做选择：要么放弃主线目标，要么伤害副线里的人。如果副线和主线永不冲突，那它只是填充字数。'}
+];
+let libTab='guide';
+let libGenre='全部';
+
+/* 从「作品信息 → 类型」里猜一个题材，用于在筛选条上标记「你的」 */
+function guessGenre(){
+  const t=(DB.theme&&DB.theme.genre||'').toLowerCase();
+  if(!t) return '';
+  const MAP=[
+    ['科幻',['科幻','太空','星际','赛博','赛博朋克','未来','末世','废土','硬科幻','软科幻']],
+    ['玄幻',['玄幻','仙侠','修真','修仙','东方','练气','洪荒']],
+    ['奇幻',['奇幻','西幻','魔幻','魔法','龙与']],
+    ['武侠',['武侠','江湖','侠','古装']],
+    ['言情',['言情','爱情','恋爱','情感','甜宠','虐恋','纯爱','耽美','百合']],
+    ['悬疑',['悬疑','推理','侦探','犯罪','谍战','破案','刑侦']],
+    ['恐怖',['恐怖','灵异','怪谈','惊悚','鬼','悬疑惊悚']],
+    ['历史',['历史','架空历史','古代','年代','民国','穿越']],
+    ['都市',['都市','现实','职场','校园','生活','青春']]
+  ];
+  for(const [g,ks] of MAP) if(ks.some(k=>t.includes(k))) return g;
+  return '';
+}
+
+/* 同义词扩展：让「伏笔」也能搜到讲「线索/铺垫」的条目 */
+const LIB_SYN={
+  '伏笔':['铺垫','埋线','暗示','线索','呼应'],
+  '开篇':['开头','起手','第一句','第一章','开场'],
+  '节奏':['张弛','速度','快慢','疲劳'],
+  '世界观':['设定','规则','体系','世界'],
+  '对话':['台词','对白','潜台词'],
+  '人物':['角色','主角','配角','反派'],
+  '结尾':['结局','收尾','终点','结局'],
+  '修改':['改稿','修订','重写','删'],
+  '视角':['人称','第一人称','第三人称','叙述'],
+  '爽感':['爽','打脸','升级','金手指'],
+  '感情':['情感','恋爱','爱情','言情'],
+  '推理':['悬疑','侦探','破案','案件'],
+  '设定':['世界观','体系','规则'],
+  '力量':['体系','境界','等级','修炼'],
+  '战斗':['打斗','对打','交手','武'],
+  '历史':['古代','年代','王朝','朝代']
+};
+function libTerms(q){
+  q=String(q||'').trim().toLowerCase();
+  if(!q) return [''];
+  const set=new Set([q]);
+  for(const k in LIB_SYN){
+    const ks=k.toLowerCase();
+    const vs=LIB_SYN[k].map(x=>x.toLowerCase());
+    if(ks.includes(q)||q.includes(ks)||vs.some(x=>x.includes(q)||q.includes(x))){
+      set.add(ks); vs.forEach(x=>set.add(x));
+    }
+  }
+  return [...set];
+}
+
+/* ============ 参考自动匹配 ============
+   目标：生成正文 / 改稿时，从 GUIDE 里挑出 1-3 条最相关的，
+   拼进提示词。原则是「宁缺毋滥」——信号不足时不注入，避免噪声干扰。 */
+const GUIDE_STOP=new Set(['的','了','是','在','和','与','就','都','而','也','这','那','有','不',
+  '人','一','个','上','中','为','以','到','会','要','他','她','它','我','你','们','说','做',
+  '但','很','更','最','可','能','没','被','把','给','让','对','从','向','等','着','过','地','得']);
+/* 连接词与虚指代词：作为二字组出现时同样没有区分度 */
+const GUIDE_STOP2=new Set(['然后','所以','因为','但是','如果','就是','还有','这个','那个','我们','他们',
+  '你们','一个','可以','需要','这样','那样','时候','已经','还是','只是','不是','没有','什么','怎么',
+  '自己','一点','一些','起来','出来','下来','过来','一起','以后','以前','之后','之前']);
+
+/* 中文用二字组切片，比单字更具体，也不需要分词词典 */
+function guideGrams(str){
+  const norm=String(str||'').toLowerCase().replace(/[^\u4e00-\u9fa5a-z0-9]+/g,'');
+  const out=new Set();
+  for(let i=0;i<norm.length-1;i++){
+    const a=norm[i], b=norm[i+1];
+    if(GUIDE_STOP.has(a)&&GUIDE_STOP.has(b)) continue;
+    if(GUIDE_STOP2.has(a+b)) continue;
+    out.add(a+b);
+  }
+  if(norm.length===1) out.add(norm);
+  return out;
+}
+
+/* 全库词频表（IDF 用）：罕见词命中比常见词更有信息量。
+   没有它的话，长查询会被大量「读者/人物/情节」这类泛词稀释，
+   真正关键的「开篇」「误会」反而被阈值挡掉。 */
+let GUIDE_DF=null;
+function guideIndex(){
+  if(GUIDE_DF) return GUIDE_DF;
+  GUIDE_DF=new Map();
+  GUIDE.forEach(e=>{
+    const gs=guideGrams(e.g+' '+e.cat+' '+e.n+' '+e.d);
+    gs.forEach(g=>GUIDE_DF.set(g,(GUIDE_DF.get(g)||0)+1));
+  });
+  return GUIDE_DF;
+}
+function gramWeight(g){
+  const df=guideIndex().get(g)||0;
+  // 未出现过的词不贡献；出现越少权重越高
+  if(!df) return 0;
+  return Math.log((GUIDE.length+1)/(df+0.5));
+}
+
+/* df 超过此值视为「泛词」：在 10% 以上的条目里都出现，
+   区分度太低（读者/主角/人物/解释…），参与匹配只会制造噪声。 */
+const GUIDE_DFCUT=8;
+
+function guideScore(entry,qGrams,qRaw,genre){
+  const eG=guideGrams(entry.g+' '+entry.cat+' '+entry.n+' '+entry.d);
+  const tG=guideGrams(entry.n);            // 标题最能代表该条目的主题
+  let w=0,hit=0,titleHit=false;
+  qGrams.forEach(g=>{
+    if(!eG.has(g)) return;
+    const df=guideIndex().get(g)||0;
+    if(df>=GUIDE_DFCUT) return;            // 泛词不计数
+    w+=gramWeight(g); hit++;
+    if(tG.has(g)) titleHit=true;
+  });
+  if(!hit) return {s:0,hit:0,titleHit:false};
+
+  const total=entry._qw||1;
+  let s=w/Math.sqrt(total);
+
+  if(genre){
+    if(entry.g===genre) s*=1.55;
+    else if(entry.g==='通用') s*=1.10;
+    else s*=0.80;
+  }
+  if(qRaw.includes(entry.cat)) s*=1.6;
+  if(titleHit) s*=1.35;
+
+  return {s,hit,titleHit};
+}
+
+/* 返回 [{...entry, score}]，按相关度排序 */
+function matchGuide(query,opts){
+  const cfg=Object.assign({limit:3,min:0.42},opts||{});
+  const raw=String(query||'').trim();
+  // 信号太弱：少于 8 字基本无从判断，宁可不动手
+  if(raw.length<8) return [];
+
+  const genre=guessGenre();
+  /* 注意：这里**不做**同义词扩展。
+     扩展是给搜索框设计的（用户明确在找某个词），
+     但用于自动匹配会发散——例如查询里的「主角」会扩出「反派」，
+     结果把「反派要有一句话」塞进一个毫不相关的科幻章。 */
+  const qg=guideGrams(raw);
+  if(qg.size<3) return [];
+
+  // 查询侧的总权重（分母）。泛词不计入，否则长查询会被稀释
+  let qw=0;
+  qg.forEach(g=>{ const df=guideIndex().get(g)||0; if(df>0&&df<GUIDE_DFCUT) qw+=gramWeight(g); });
+  if(qw<=0) return [];
+
+  const scored=GUIDE.map(e=>{
+    e._qw=qw;
+    const r=guideScore(e,qg,raw,genre);
+    delete e._qw;
+    return {e,s:r.s,hit:r.hit,titleHit:r.titleHit};
+  })
+    // 题材硬过滤：已知类型时，只保留同题材与通用，绝不跨题材塞技巧
+    .filter(x=>!genre || x.e.g===genre || x.e.g==='通用')
+    // 收录门槛：至少 2 个有效词命中，或 1 个命中且命中词出现在标题里
+    .filter(x=> (x.hit>=2 || x.titleHit) && x.s>=cfg.min)
+    // 连类型都没填时，仅凭内容词更难判准，抬高门槛
+    .filter(x=> genre ? true : (x.hit>=2 && x.s>=0.75))
+    .sort((a,b)=>b.s-a.s);
+  if(!scored.length) return [];
+
+  // 同一子类最多 2 条，防止 3 条全是「技法」
+  const out=[],catN={};
+  for(const {e,s} of scored){
+    if((catN[e.cat]||0)>=2) continue;
+    catN[e.cat]=(catN[e.cat]||0)+1;
+    out.push(Object.assign({},e,{score:s}));
+    if(out.length>=cfg.limit) return out;
+  }
+  // 条数不够时放宽子类限制补齐
+  for(const {e,s} of scored){
+    if(out.some(x=>x.n===e.n)) continue;
+    out.push(Object.assign({},e,{score:s}));
+    if(out.length>=cfg.limit) break;
+  }
+  return out;
+}
+
+/* 当前是否启用（用户可关） */
+function guideAutoOn(){
+  const ai=DB.ai||{};
+  return ai.guideAuto!==false;
+}
+function guideLimit(){
+  const raw=(DB.ai||{}).guideTop;
+  const n=Number(raw);
+  const v=Number.isFinite(n)?n:3;   // 注意：0 是合法输入，不能用 || 兜底
+  return Math.max(1,Math.min(6,Math.round(v)));
+}
+
+/* 若开启自动匹配则返回条目，否则空数组 */
+function pickGuide(query,limit){
+  if(!guideAutoOn()) return [];
+  return matchGuide(query,{limit:limit||guideLimit()});
+}
+
+/* 拼成提示词段落（空数组返回空串，调用方无需判断） */
+function guidePromptBlock(list){
+  if(!list||!list.length) return '';
+  const L=['【写作参考 · 自动匹配（来自你的参考库）】'];
+  L.push('下面几条与本段任务最相关。请在具体字句里落实它们，不要只是复述原则：');
+  list.forEach(g=>L.push(`· ${g.n}——${g.d}`));
+  return L.join('\n');
+}
+
+/* ---- 界面：把「自动匹配了哪几条」显示出来 ---- */
+function guideChipsHtml(list,emptyText,prefix){
+  if(!guideAutoOn())
+    return `<span class="hint" style="font-size:11px;color:var(--ink-3)">自动匹配参考已关闭</span>`;
+  if(!list.length)
+    return `<span class="hint" style="font-size:11px;color:var(--ink-3)">${emptyText}</span>`;
+  return (prefix?`<span class="hint" style="font-size:11px;color:var(--ink-3)">${prefix}</span>`:'')+
+    list.map(g=>`<button class="chip" data-copy="${esc(g.n+'：'+g.d)}" title="${esc(g.d)}">${esc(g.n)}</button>`).join('');
+}
+function chapGuideChipHtml(guide){
+  const btn=`<button class="btn sm ${guideAutoOn()?'primary':''}" id="btnGuideAuto"
+    title="根据本章标题、简述与额外指导，自动从写作参考库挑几条塞进提示词">${guideAutoOn()?'✓ 自动匹配参考':'自动匹配参考：已关'}</button>`;
+  const gs=guideAutoOn()?matchGuide(chapterGuideQuery(curChap+1,guide)):[];
+  return btn+guideChipsHtml(gs,'本题材暂无强相关条目，不会强行注入');
+}
+function revGuideChipHtml(note){
+  const gs=guideAutoOn()?matchGuide(reviseGuideQuery(note,DB.chapters[curChap]||{},''),2):[];
+  return guideChipsHtml(gs,'写清要改什么，会自动带上相关写作参考','将附带：');
+}
+/* 输入时只刷新这一小块，不动整个视图（避免打断输入与光标） */
+function refreshGuideChips(){
+  const a=document.getElementById('chapGuideChips');
+  if(a) a.innerHTML=chapGuideChipHtml((document.getElementById('chapGuide')||{}).value||'');
+  const b=document.getElementById('revGuideChips');
+  if(b) b.innerHTML=revGuideChipHtml((document.getElementById('revInstruction')||{}).value||'');
+}
+
+/* 章节生成的检索语：标题 + 简述 + 额外指导 + 类型 */
+function chapterGuideQuery(chapNo,guidance){
+  const c=DB.chapters[chapNo-1]||{};
+  return [c.title,c.summary,guidance,(DB.theme||{}).genre]
+    .filter(x=>x&&String(x).trim()).join('。');
+}
+/* 改稿的检索语：修改要求 + 章节信息（片段本身太长，取前 120 字） */
+function reviseGuideQuery(instruction,ch,frag){
+  return [instruction,(ch&&ch.title)||'',(ch&&ch.summary)||'',
+    String(frag||'').slice(0,120)].filter(x=>x&&String(x).trim()).join('。');
+}
+
+function guideItems(){
+  return GUIDE.filter(x=>libGenre==='全部'||x.g===libGenre);
+}
+function guideCard(x){
+  const kw=(x.g+' '+x.cat+' '+x.n+' '+x.d).toLowerCase();
+  return `<div class="mat txt" data-search="${esc(kw)}">
+    <div class="ico">${esc(x.cat.slice(0,1))}</div>
+    <div class="body">
+      <div class="nm">${esc(x.n)}</div>
+      <div class="ds">${esc(x.d)}</div>
+      <span class="pill">${esc(x.g)}</span>
+      <span class="pill">${esc(x.cat)}</span>
+    </div>
+    <div class="act"><button class="btn sm" data-copy="${esc(x.n+'：'+x.d)}">复制</button></div>
+  </div>`;
+}
+
+V.library=()=>{
+  const refs=DB.refs||[];
+  const mine=guessGenre();
+  const items=guideItems();
+  const cnt=g=>g==='全部'?GUIDE.length:GUIDE.filter(x=>x.g===g).length;
+  const chips=[['全部',GUIDE.length],...GENRES.map(g=>[g,cnt(g)])];
+
+  return `
+  <div class="view-head"><h2>写作参考</h2>
+  <p>按题材整理的写作方法论，共 ${GUIDE.length} 条。写的时候把最相关的一条「复制」进「本章额外指导」，比空泛地说「写得好一点」有效得多。</p></div>
+  <div class="tabs">
+    <button class="tab ${libTab==='guide'?'on':''}" data-lib="guide">写作指南 (${GUIDE.length})</button>
+    <button class="tab ${libTab==='refs'?'on':''}" data-lib="refs">我的素材 (${refs.length})</button>
+  </div>
+  ${libTab==='guide'?`
+  <div class="chips">
+    ${chips.map(([g,n])=>`<button class="chip ${libGenre===g?'on':''}" data-genre="${esc(g)}">
+      ${esc(g)}<span class="num">${n}</span>${g===mine?'<span class="you">·你的</span>':''}
+    </button>`).join('')}
+  </div>
+  <input type="text" id="libSearch" placeholder="搜索：伏笔 / 节奏 / 开篇 / 世界观 / 误会……" style="margin-bottom:9px">
+  <div class="libcount" id="libCount">共 ${items.length} 条${libGenre!=='全部'?`（${libGenre}）`:''}${mine&&mine===libGenre?' · 与你在写的类型相符':''}</div>
+  <div id="libList">
+    ${items.length?items.map(guideCard).join(''):`<div class="empty">这个题材还没有条目，试试「通用」。</div>`}
+  </div>`:`
+  <div class="card">
+    <div class="card-t">添加素材 <span class="hint">书摘、链接、背景资料、人物原型……</span></div>
+    <div class="grid2">
+      <div class="field"><label class="f">标题</label>
+        <input type="text" id="refTitle" placeholder="例如：《故事》麦基 · 关于场景的论述"></div>
+      <div class="field"><label class="f">链接（可选）</label>
+        <input type="text" id="refUrl" placeholder="https://… 或本地文件路径"></div>
+    </div>
+    <div class="field"><label class="f">说明 / 摘录</label>
+      <textarea rows="3" id="refNote" placeholder="这条素材能用在什么地方？"></textarea></div>
+    <button class="btn primary" id="btnAddRef">加入素材库</button>
+  </div>
+  <div id="libList">
+    ${refs.length?refs.map((r,i)=>`
+      <div class="mat txt">
+        <div class="ico">素</div>
+        <div class="body">
+          <div class="nm">${esc(r.n||'未命名')}</div>
+          <div class="ds">${esc(r.d||'')}</div>
+          ${r.u?`<div class="pt">${esc(r.u)}</div>`:''}
+        </div>
+        <div class="act">
+          ${r.u?`<a class="btn sm" href="${esc(r.u)}" target="_blank" rel="noopener">打开</a>`:''}
+          <button class="btn sm" data-copy="${esc((r.n||'')+'\n'+(r.d||'')+'\n'+(r.u||''))}">复制</button>
+          <button class="icon-btn" data-del="ref" data-i="${i}">&times;</button>
+        </div>
+      </div>`).join(''):`<div class="empty">还没有素材。上面添加一条试试。</div>`}
+  </div>`}
+  </div>`;
+};
+
+/* ==================================================================
+   5. 事件
+   ================================================================== */
+document.addEventListener('input',e=>{
+  const p=e.target.dataset.bind;if(!p)return;
+  const v=e.target.type==='number'?Number(e.target.value||0):e.target.value;
+  setPath(DB,p,v);save();
+  if(e.target.id==='ms'){
+    const wc=countWords(e.target.value);
+    const a=document.getElementById('wcNow');if(a)a.textContent='本章 '+fmt(wc)+' 字';
+    const b=document.getElementById('wcAll');
+    if(b){const all=DB.chapters.reduce((s,x,i)=>s+countWords(i===curChap?e.target.value:(x.content||'')),0);
+      b.textContent='全书 '+fmt(all)+' 字';}
+  }
+  if(e.target.id==='chapSumBox'){
+    const el=document.getElementById('chapSumWc');
+    if(el) el.textContent=countWords(e.target.value)+' 字';
+  }
+  // 写「额外指导 / 修改要求」时，实时更新自动匹配的参考（只刷那一小块）
+  if(e.target.id==='chapGuide'||e.target.id==='revInstruction'){
+    clearTimeout(window.__guideT);
+    window.__guideT=setTimeout(refreshGuideChips,260);
+  }
+  if(e.target.id==='sumPreview'&&(DB.summaryCfg||DEFAULT_SUM).mode==='manual'){
+    // 手动模式下编辑整段摘要 → 直接存配置
+    DB.summaryCfg.manual=e.target.value; save();
+  }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.bind){save();}
+  if(t.dataset.task){DB.ai.choose[t.dataset.task]=t.value;save();toast('已更新任务分配');}
+  if(t.id==='chapSel'){flushSave();curChap=+t.value;rememberUI();save();render();}
+  if(t.id==='wordTarget'){DB.theme._wordTarget=+t.value||3000;save();toast('已更新单章目标');}
+  // TXT 导出选项变化 → 保存并刷新统计预览（书名不影响统计，仅保存）
+  if(['txtScope','txtIndent','txtSep','txtTitlePage'].includes(t.id)){
+    readTxtOpts(); render();
+  }else if(t.id==='txtHead'){
+    readTxtOpts();
+  }
+  if(t.id==='fileImport'){
+    const f=t.files&&t.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{try{
+      const d=JSON.parse(r.result);
+      if(!d||typeof d!=='object') throw new Error('格式不符');
+      DB=mergeDefaults(d);
+      route=(DB.ui&&V[DB.ui.route])?DB.ui.route:'dash';
+      curChap=Math.max(0,Math.min(DB.ui.curChap||0,Math.max(0,DB.chapters.length-1)));
+      lastDraft=DB.pending.draft||'';lastOutline=DB.pending.outline||'';lastSparks=DB.pending.sparks||'';
+      saveNow();render();toast('导入成功');
+    }catch(err){alert('导入失败：不是有效的备份文件。\n'+(err.message||''));}};
+    r.readAsText(f,'utf-8');t.value='';
+  }
+});
+
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button,a');if(!b)return;
+
+  if(b.dataset.go){route=b.dataset.go;rememberUI();save();buildNav();render();window.scrollTo(0,0);return;}
+  if(b.dataset.lib){libTab=b.dataset.lib;render();window.scrollTo(0,0);return;}
+  if(b.dataset.genre){libGenre=b.dataset.genre;render();window.scrollTo(0,0);return;}
+  if(b.dataset.cfgtab){cfgTab=b.dataset.cfgtab;render();return;}
+  if(b.dataset.cfgsel){DB.ai.last_config=b.dataset.cfgsel;save();render();return;}
+  if(b.dataset.copy){navigator.clipboard?.writeText(b.dataset.copy).then(()=>toast('已复制'),()=>toast('复制失败'));return;}
+  if(b.dataset.toggle==='scene'){const i=+b.dataset.i;DB.scenes[i].used=!DB.scenes[i].used;save();render();return;}
+
+  if(b.dataset.preset){
+    const k=b.dataset.preset,p=PRESETS[k];if(!p)return;
+    const g=id=>document.getElementById(id);
+    if(g('cfgFmt'))g('cfgFmt').value=p.interface_format;
+    if(g('cfgUrl'))g('cfgUrl').value=p.base_url;
+    if(g('cfgModel'))g('cfgModel').value=p.model_name;
+    if(g('cfgMax'))g('cfgMax').value=p.max_tokens;
+    if(g('cfgThink'))g('cfgThink').value=p.thinking_mode||'default';
+    if(g('cfgName')&&k!=='自定义')g('cfgName').value=k;
+    paintKeyDiag();
+    toast('已套用预设，请补填 API Key 后保存');return;
+  }
+
+  if(b.dataset.add){
+    const k=b.dataset.add;
+    if(k==='prop')DB.theme.proposition.push({layer:'',text:'',scene:''});
+    if(k==='epi')DB.theme.epigraphs.push('');
+    if(k==='tech')DB.world.tech.push({name:'',desc:''});
+    if(k==='event')DB.world.events.push({time:'',text:''});
+    if(k==='faction')DB.factions.push({key:'f'+Date.now(),camp:'',name:'新势力',claim:'',proto:'',notes:''});
+    if(k==='char')DB.characters.push({name:'',role:'',faction:'',stand:'',motive:'',secret:'',arc:''});
+    if(k==='scene')DB.scenes.push({tag:'',text:'',used:false});
+    if(k==='chap')DB.chapters.push({title:'',summary:'',status:'待写',content:''});
+    save();render();return;
+  }
+  if(b.dataset.batch==='chap'){
+    const n=parseInt(prompt('要添加多少章？','10'),10);
+    if(n>0){for(let i=0;i<n;i++)DB.chapters.push({title:'',summary:'',status:'待写',content:''});save();render();}
+    return;
+  }
+  if(b.dataset.del){
+    const k=b.dataset.del,i=+b.dataset.i;
+    if(!confirm('确定删除？不可撤销。'))return;
+    ({prop:()=>DB.theme.proposition,epi:()=>DB.theme.epigraphs,tech:()=>DB.world.tech,
+      event:()=>DB.world.events,faction:()=>DB.factions,char:()=>DB.characters,
+      scene:()=>DB.scenes,chap:()=>DB.chapters,ref:()=>DB.refs})[k]().splice(i,1);
+    save();render();return;
+  }
+
+  switch(b.id){
+    case 'btnClearLog': DB.logs=[];save();render();break;
+    case 'btnGuideAuto':
+      DB.ai.guideAuto=!guideAutoOn();
+      save(); render();
+      toast(DB.ai.guideAuto?'已开启：生成时会自动附上相关参考':'已关闭：不再自动附参考');
+      break;
+    case 'btnGuideTop':{
+      const n=parseInt(prompt('每次最多附带几条参考？（1-6）',String(guideLimit())),10);
+      if(!Number.isFinite(n)) break;
+      DB.ai.guideTop=n; save(); render();
+      toast('已设为最多 '+guideLimit()+' 条');
+      break;
+    }
+    case 'btnImportLegacy':
+      if(!confirm('把旧版项目导入到本工作台？\n\n当前工作台的内容会被覆盖（建议先导出备份）。')) break;
+      importLegacy(); break;
+    case 'btnIgnoreLegacy':
+      DB._legacyIgnored=true; save(); render(); break;
+    case 'btnExportJson':{
+      const withKeys=confirm('备份是否包含 API Key？\n\n· 确定 = 包含（换电脑导入后可直接用）\n· 取消 = 不包含（要分享给别人时选这个）');
+      let payload=DB;
+      if(!withKeys){
+        payload=structuredClone(DB);
+        Object.keys(payload.ai.configs||{}).forEach(k=>{ payload.ai.configs[k].api_key=''; });
       }
+      download(`${safeName()}-备份-${stamp()}.json`,JSON.stringify(payload,null,2),'application/json');
+      toast(withKeys?'已导出（含 Key）':'已导出（不含 Key）');break;
+    }
+    case 'btnExportMd':
+      download(`${safeName()}-创作稿-${stamp()}.md`,toMarkdown(),'text/markdown');toast('已导出');break;
+
+    /* TXT 导出 */
+    case 'btnExportTxt':{
+      const o=readTxtOpts();
+      const r=buildNovelTxt(o);
+      if(!r.count){toast('没有可导出的章节（正文为空）');alert('所选范围内没有带正文的章节。\n请先写正文，或把「导出范围」改为「全部有正文的章节」。');break;}
+      const scopeTag=o.scope==='final'?'已定稿':o.scope==='current'?`第${curChap+1}章`:'全本';
+      downloadTxt(`${r.book}-${scopeTag}-${stamp()}.txt`,r.text);
+      log(`导出 TXT：${r.count} 章 / ${r.chars} 字 / ${scopeTag}`);
+      save();toast(`已导出 ${r.count} 章，${fmt(r.chars)} 字`);break;}
+    case 'btnPreviewTxt':{
+      const o=readTxtOpts();
+      const r=buildNovelTxt(o);
+      const out=document.getElementById('txtOut');
+      if(out){
+        if(!r.count){out.textContent='（所选范围内没有带正文的章节）';break;}
+        const head=r.text.split('\n').slice(0,60).join('\n');
+        out.textContent=head+(r.text.split('\n').length>60?`\n\n……（以下省略，完整共 ${fmt(r.chars)} 字）`:'');
+      }
+      break;}
+    case 'btnCopyTxt':{
+      const r=buildNovelTxt(readTxtOpts());
+      if(!r.count){toast('没有可复制的内容');break;}
+      navigator.clipboard?.writeText(r.text)
+        .then(()=>toast(`已复制 ${r.count} 章 / ${fmt(r.chars)} 字`))
+        .catch(()=>toast('复制失败，请改用「一键导出 TXT」'));
+      break;}
+    case 'btnImport': document.getElementById('fileImport').click();break;
+    case 'btnReset':
+      if(!confirm('确定清空全部数据并恢复默认？\n建议先导出备份。'))return;
+      if(!confirm('再确认一次？此操作不可撤销。'))return;
+      try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_BAK); }catch(e){}
+      route='dash';curChap=0;lastDraft='';lastOutline='';lastSparks='';
+      DB=mergeDefaults(null);rememberUI();
+      saveNow();render();toast('已重置');break;
+
+    /* 本地保存 */
+    case 'btnSaveNow':
+      if(saveNow()) toast('已保存 · '+new Date().toLocaleTimeString('zh-CN',
+        {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+      else toast('保存失败，请查看顶部提示');
+      paintStorageInfo();break;
+    case 'btnRestorePrev':{
+      let raw=null;
+      try{ raw=localStorage.getItem(KEY_BAK); }catch(e){}
+      if(!raw){ toast('没有可用的上一版备份'); break; }
+      let d; try{ d=JSON.parse(raw); }catch(e){ toast('备份已损坏，无法恢复'); break; }
+      const t=d.updated?new Date(d.updated).toLocaleString('zh-CN'):'未知时间';
+      if(!confirm(`将数据回滚到上一版？\n\n备份时间：${t}\n章节数：${(d.chapters||[]).length}\n\n当前内容会被覆盖。`))return;
+      DB=mergeDefaults(d);
+      route=(DB.ui&&V[DB.ui.route])?DB.ui.route:'dash';
+      curChap=Math.max(0,Math.min(DB.ui.curChap||0,Math.max(0,DB.chapters.length-1)));
+      lastDraft=DB.pending.draft||'';lastOutline=DB.pending.outline||'';lastSparks=DB.pending.sparks||'';
+      saveNow();render();toast('已恢复到上一版备份');break;
+    }
+    case 'btnStorageHelp':{
+      const h=document.getElementById('storeHelp');
+      if(h){ h.hidden=!h.hidden; if(!h.hidden){
+        const where = STORAGE.isFile
+          ? `本机浏览器的 <code>localStorage</code>，键名 <code>${KEY}</code>，与这个 HTML 文件本身无关（文件删了数据还在，换个浏览器打开则读不到）`
+          : `当前站点（${esc(location.origin)}）的 <code>localStorage</code>，键名 <code>${KEY}</code>，只存在你自己的浏览器里，不会上传到服务器`;
+        const lose = STORAGE.isFile
+          ? `① 手动「清除浏览数据 / 清除站点数据」；② 隐私模式关闭窗口后；③ 换了浏览器或设备；④ 部分浏览器把存储绑定在文件路径上，移动文件位置后可能读不到。`
+          : `① 手动「清除浏览数据 / 清除站点数据」；② 隐私/无痕模式关闭窗口后；③ 换了浏览器或设备；④ 换了域名（例如仓库改名）后，旧数据读不到。`;
+        h.innerHTML=
+          `<div class="savenote">`+
+          `<b>环境检测</b>：${STORAGE.ok
+            ? '本地存储可用，自动保存正常工作。'
+            : '<span style="color:var(--red)">'+esc(STORAGE.reason)+'</span>'}<br>`+
+          `<b>存储位置</b>：${where}。<br>`+
+          `<b>当前占用</b>：${(sizeOf()/1024).toFixed(1)} KB。浏览器通常给每个站点约 5 MB。<br>`+
+          `<b>什么时候会丢</b>：${lose}<br>`+
+          `<b>所以</b>：重要节点（每完成几章）导出一次 JSON 备份，存到网盘或 U 盘，这是唯一跨设备可靠的方案。`+
+          `</div>`;
+      }}
+      break;
+    }
+
+    /* 配置 */
+    case 'btnKeyEye':{
+      const i=document.getElementById('cfgKey');
+      if(i){i.type = i.type==='password'?'text':'password';
+        b.textContent = i.type==='password'?'显示':'隐藏';}
+      break;}
+    case 'btnKeyClean':{
+      const i=document.getElementById('cfgKey');
+      if(i){const before=i.value.length;i.value=sanitizeKey(i.value);
+        paintKeyDiag();
+        toast(before===i.value.length?'未发现需要清洗的字符':`已清洗（${before} → ${i.value.length} 位）`);}
+      break;}
+    case 'btnCfgAdd':{
+      const n=prompt('新配置名称：','新配置'+(Object.keys(DB.ai.configs).length+1));
+      if(!n)break;
+      DB.ai.configs[n]=Object.assign({api_key:''},PRESETS['DeepSeek V4 Flash']);
+      DB.ai.last_config=n;save();render();break;}
+    case 'btnCfgSave':{
+      const g=id=>document.getElementById(id);
+      const oldName=DB.ai.last_config;
+      const nn=(g('cfgName').value||'').trim()||oldName;
+      const conf={api_key:sanitizeKey(g('cfgKey').value),base_url:g('cfgUrl').value.trim(),
+        interface_format:g('cfgFmt').value,model_name:g('cfgModel').value.trim(),
+        temperature:parseFloat(g('cfgTemp').value)||0.7,max_tokens:parseInt(g('cfgMax').value,10)||8192,
+        timeout:parseInt(g('cfgTimeout').value,10)||600,
+        thinking_mode:(g('cfgThink')&&g('cfgThink').value)||'default'};
+      DB.ai.streaming=g('cfgStream').value==='1';
+      if(nn!==oldName){
+        if(DB.ai.configs[nn]){alert('该名称已存在。');break;}
+        DB.ai.configs[nn]=conf;delete DB.ai.configs[oldName];
+        for(const k in DB.ai.choose) if(DB.ai.choose[k]===oldName) DB.ai.choose[k]=nn;
+        DB.ai.last_config=nn;
+      }else DB.ai.configs[oldName]=conf;
+      save();render();toast('配置已保存');break;}
+    case 'btnCfgDel':{
+      const n=DB.ai.last_config;
+      if(!confirm(`删除配置「${n}」？`))break;
+      delete DB.ai.configs[n];
+      const rest=Object.keys(DB.ai.configs);
+      DB.ai.last_config=rest[0];
+      for(const k in DB.ai.choose) if(!DB.ai.configs[DB.ai.choose[k]]) DB.ai.choose[k]=rest[0];
+      save();render();break;}
+    case 'btnCfgTest':{
+      const msg=document.getElementById('cfgTestMsg');
+      // 先保存当前表单再测
+      const g=id=>document.getElementById(id);
+      const name=DB.ai.last_config;
+      DB.ai.configs[name]=Object.assign(DB.ai.configs[name]||{},{api_key:sanitizeKey(g('cfgKey').value),
+        base_url:g('cfgUrl').value.trim(),interface_format:g('cfgFmt').value,
+        model_name:g('cfgModel').value.trim(),temperature:parseFloat(g('cfgTemp').value)||0.7,
+        max_tokens:parseInt(g('cfgMax').value,10)||8192,timeout:parseInt(g('cfgTimeout').value,10)||600,
+        thinking_mode:(g('cfgThink')&&g('cfgThink').value)||'default'});
+      DB.ai.streaming=g('cfgStream').value==='1';
+      save();
+      b.disabled=true;msg.innerHTML='<span class="spin"></span> 测试中…';
+      testCfg(name).then(r=>{
+        msg.innerHTML=`<span style="color:var(--teal)">✓ 连接成功（${r.ms}ms）：${esc(r.text)}</span>`;
+      }).catch(err=>{
+        msg.innerHTML=`<div class="alert err" style="margin:0;white-space:pre-wrap;text-align:left;max-width:520px">${esc(err.message)}</div>`;
+      }).finally(()=>{b.disabled=false;});
+      break;}
+
+    case 'btnGenArch': runArch(b);break;
+    case 'btnCopyArch': navigator.clipboard?.writeText(DB.theme._arch||'').then(()=>toast('已复制'));break;
+    case 'btnClearArch': if(confirm('清除架构文本？')){DB.theme._arch='';save();render();}break;
+    case 'btnGenOutline': runOutline(b);break;
+    case 'btnOutApply': applyOutline();break;
+    case 'btnSparks': runSparks(b);break;
+    case 'btnSparkAdd': addSparks();break;
+    case 'btnAddRef':{
+      const n=(document.getElementById('refTitle')||{}).value||'';
+      const u=(document.getElementById('refUrl')||{}).value||'';
+      const d=(document.getElementById('refNote')||{}).value||'';
+      if(!n.trim()&&!d.trim()){ toast('至少填一个标题或说明'); break; }
+      DB.refs=[...(DB.refs||[]),{n:n.trim(),u:u.trim(),d:d.trim(),at:new Date().toISOString()}];
+      save(); render(); toast('已加入素材库');
+      break;}
+    case 'btnBuildPrompt': showPrompt();break;
+    case 'btnGenChapter': runChapter(b);break;
+    case 'btnApplyDraft': applyDraft(false);break;
+    case 'btnAppendDraft': applyDraft(true);break;
+    case 'btnCopyDraft': navigator.clipboard?.writeText(lastDraft||'').then(()=>toast('已复制'));break;
+    case 'btnExpand': runExpand(b);break;
+    case 'btnReview': runReview(b);break;
+    case 'btnSummary': runSummary(b);break;
+
+    /* 前文摘要管理 */
+    case 'btnRebuildSum':{
+      const before=buildSummaryText();
+      refreshSummaryUI(before);
+      const cov=summaryCoverage();
+      toast(cov.count?`已重算：覆盖 ${cov.count} 章，${fmt(cov.chars)} 字`:'没有可汇总的章节摘要');
+      break;}
+    case 'btnToggleSumMode':{
+      const cfg=DB.summaryCfg||(DB.summaryCfg=structuredClone(DEFAULT_SUM));
+      if(cfg.mode==='manual'){
+        if(!confirm('切回「自动汇总」后，手动写的整段摘要将不再被使用（内容会保留在配置里，可切回来）。\n\n确定吗？')) break;
+        cfg.mode='auto'; save(); render(); toast('已切换为自动汇总');
+      }else{
+        // 把当前自动汇总的结果带入手动编辑，避免空手起步
+        cfg.manual=buildSummaryText();
+        cfg.mode='manual'; save(); render(); toast('已切换为手动编辑');
+      }
+      break;}
+    case 'btnSaveChapSum':{
+      const ta=document.getElementById('chapSumBox');
+      if(!ta) break;
+      const c=DB.chapters[curChap];
+      c.sum=ta.value.trim(); c.sumUpdated=nowIso();
+      const before=buildSummaryText();
+      save(); render(); refreshSummaryUI(before);
+      toast('本章摘要已保存');
+      break;}
+    case 'btnClearChapSum':{
+      if(!confirm('清空本章摘要？该章将不再纳入前文摘要。\n\n（若想清空全部章节的摘要，请用右侧「清空整体摘要」。）')) break;
+      const c=DB.chapters[curChap];
+      const before=buildSummaryText();
+      c.sum=''; delete c.sumUpdated;
+      save(); render(); refreshSummaryUI(before);
+      toast('已清空本章摘要');
+      break;}
+    case 'btnClearAllSum':{
+      const t=summarizeClearTargets();
+      if(!t.chapters && !t.hasManual){ toast('当前没有任何摘要可清空'); break; }
+      const rows=[];
+      if(t.chapters) rows.push(`<li>${t.chapters} 个章节的摘要，共 <b>${fmt(t.chapterChars)}</b> 字</li>`);
+      if(t.hasManual) rows.push(`<li>手动摘要 1 段，共 <b>${fmt(t.manualChars)}</b> 字</li>`);
+      const p=document.getElementById('sumClearPanel');
+      if(p){
+        p.hidden=false;
+        p.innerHTML=`
+          <div class="alert warn" style="margin-top:10px;font-size:12.5px;line-height:1.8">
+            <b>即将清空前文摘要</b>
+            <ul style="margin:6px 0 6px 18px;padding:0">${rows.join('')}</ul>
+            <span style="color:var(--ink-2)">各章正文<b>不受任何影响</b>。
+            清空后可用上方的「撤销清空」还原（仅保留最近一次）。</span>
+            <div class="row" style="margin-top:9px">
+              <button class="btn sm danger" id="btnClearAllSumDo">确认清空</button>
+              <button class="btn sm" id="btnClearAllSumCancel">取消</button>
+            </div>
+          </div>`;
+        p.scrollIntoView({block:'nearest'});
+      }
+      break;}
+    case 'btnClearAllSumCancel':{
+      const p=document.getElementById('sumClearPanel');
+      if(p){ p.hidden=true; p.innerHTML=''; }
+      break;}
+    case 'btnClearAllSumDo':{
+      const t=summarizeClearTargets();
+      const before=buildSummaryText();
+      const undo=clearAllSummary();
+      save(); render(); refreshSummaryUI(before);
+      const n=(undo.chapters||[]).length;
+      toast(`已清空整体摘要（${n} 章 + ${undo.manual?'手动摘要':'无手动摘要'}）`);
+      log(`清空整体摘要：${n} 章摘要${undo.manual?' + 手动摘要':''}，正文未改动`);
+      break;}
+    case 'btnUndoClearSum':{
+      const u=(DB.summaryCfg&&DB.summaryCfg._undo)||null;
+      if(!u){ toast('没有可撤销的清空记录'); break; }
+      const r=undoClearSummary();
+      const before=buildSummaryText();
+      save(); render(); refreshSummaryUI(before);
+      toast(r.skipped
+        ? `已还原 ${r.restored} 章摘要（${r.skipped} 章已不存在，跳过）`
+        : `已还原 ${r.restored} 章摘要`);
+      log(`撤销清空：还原 ${r.restored} 章摘要`);
+      break;}
+    case 'btnFinalize': finalize();break;
+
+    /* AI 修订 */
+    case 'btnRevise': runRevise(b);break;
+    case 'btnApplyRevise': applyRevise();break;
+    case 'btnRevUndo': undoRevise();break;
+    case 'btnRevToggle':
+      DB.revDiffMode = (DB.revDiffMode==='plain') ? 'mark' : 'plain';
+      save(); renderRevOutput();
+      toast(DB.revDiffMode==='plain'?'已切换为纯文本':'已显示修订标记');
+      break;
+    case 'btnCopyRevise':
+      navigator.clipboard?.writeText(lastRevise?lastRevise.text:'')
+        .then(()=>toast('已复制修订稿'),()=>toast('复制失败'));break;
+    case 'btnRevUseSel':{
+      const sel=getMsSelection();
+      if(!sel){toast('请先在正文中选中一段文字');break;}
+      const ta=document.getElementById('revInstruction');
+      if(ta){
+        const cur=ta.value.trim();
+        ta.value=(cur?cur+'\n':'')+'把下面这段改好：\n'+sel.text;
+        const sel2=document.getElementById('revMode');
+        if(sel2) sel2.value='selection';
+        ta.focus();
+        toast('已填入要求框，并切换为「局部修订」');
+      }
+      break;}
+    case 'btnRevisePrompt':{
+      const instr=(document.getElementById('revInstruction')||{}).value||'';
+      const mode=(document.getElementById('revMode')||{}).value||'full';
+      const c=DB.chapters[curChap];
+      const sel=getMsSelection();
+      const p=P.revise({instruction:instr,mode,sel:sel?sel.text:'',full:c.content||'',
+        chapterNo:curChap+1,targetKeep:parseInt((document.getElementById('revTarget')||{}).value,10)||0});
+      const out=document.getElementById('revOut');
+      out.textContent=p;
+      const m=document.getElementById('revMeta');
+      if(m) m.innerHTML=`<span>提示词 ${p.length} 字符（未调用模型）</span>`;
+      toast('提示词已显示');
+      break;}
+  }
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='libSearch'){
+    const q=e.target.value.trim().toLowerCase();
+    const terms=libTerms(q);
+    let shown=0;
+    document.querySelectorAll('#libList .mat').forEach(el=>{
+      const hit=!q||terms.some(t=>el.dataset.search.includes(t));
+      el.style.display=hit?'':'none';
+      if(hit) shown++;
     });
-  </script>
+    // 同步条数，避免筛完还显示「共 90 条」
+    const c=document.getElementById('libCount');
+    if(c){
+      const total=guideItems().length;
+      c.textContent = q
+        ? `找到 ${shown} 条（在 ${total} 条${libGenre!=='全部'?'「'+libGenre+'」':''}中）`
+        : `共 ${total} 条${libGenre!=='全部'?`（${libGenre}）`:''}`;
+    }
+    return;
+  }
+  if(e.target.id==='cfgKey'){
+    // 实时清洗并回写，避免隐藏字符悄悄进入配置
+    const k=sanitizeKey(e.target.value);
+    if(k!==e.target.value){
+      const pos=e.target.selectionStart;
+      e.target.value=k;
+      try{e.target.setSelectionRange(Math.min(pos,k.length),Math.min(pos,k.length));}catch(err){}
+    }
+    paintKeyDiag();
+  }
+});
+
+/* 正文框选区变化 → 更新「已选中 N 字」提示 */
+['select','mouseup','keyup','focus'].forEach(ev=>{
+  document.addEventListener(ev,e=>{
+    if(e.target&&e.target.id==='ms') paintSelInfo();
+  },true);
+});
+
+/* ==================================================================
+   5. 前文摘要：分章摘要 + 自动汇总
+   ================================================================== */
+/* 参与汇总的章节：有正文，且（已定稿 或 允许纳入草稿） */
+function summaryChapters(){
+  const cfg=DB.summaryCfg||DEFAULT_SUM;
+  const out=[];
+  DB.chapters.forEach((c,i)=>{
+    if(!(c.content||'').trim()) return;
+    if(c.status==='待写') return;
+    if(!cfg.includeUnfinal && c.status!=='已定稿') return;
+    const s=(c.sum||'').trim();
+    if(s) out.push({no:i+1,title:(c.title||'').trim(),text:s});
+  });
+  return out;
+}
+
+/* 拼装整体前文摘要。
+   策略：超预算时走「压缩阶梯」——先压缩早期章节的文字量（尽量保住每一章的条目），
+   不够再逐级加强，最后才牺牲早期章节的覆盖。这样优先保留「所有章都有代表」，
+   而不是粗暴丢掉最早几章（那会丢失开篇埋下的关键设定）。 */
+function buildSummaryText(){
+  const cfg=DB.summaryCfg||DEFAULT_SUM;
+  if(cfg.mode==='manual') return (cfg.manual||'').trim();
+
+  const items=summaryChapters();
+  if(!items.length) return '';
+  const limit=cfg.maxChars||2000;
+  const recent=Math.max(1,cfg.recentChapters||6);
+
+  const full=(it)=>`第${it.no}章${it.title?`《${it.title}》`:''}：${it.text}`;
+  const all=items.map(full).join('\n');
+  if(all.length<=limit) return all;
+
+  // 首句压缩：截到第一个句末标点，再按 maxLen 截断
+  const briefText=(t,maxLen)=>{
+    let s=(t.split(/[。！？\n]/)[0]||t).trim();
+    if(maxLen>0&&s.length>maxLen) s=s.slice(0,maxLen-1)+'…';
+    return s;
+  };
+  const NOTE='（早期章节已压缩）';
+
+  // 压缩阶梯：越往后压缩越狠、覆盖越少。取第一个能装下的档位。
+  const ladder=[
+    {keep:recent, brief:60},
+    {keep:recent, brief:42},
+    {keep:recent, brief:26},
+    {keep:Math.max(1,recent-1), brief:42},
+    {keep:Math.max(1,recent-2), brief:42},
+    {keep:Math.max(1,recent), brief:18}
+  ];
+  for(const lv of ladder){
+    const cut=Math.max(0,items.length-lv.keep);
+    const head=items.slice(0,cut), tail=items.slice(cut);
+    const lines=head.map(it=>`第${it.no}章：${briefText(it.text,lv.brief)}`)
+                 .concat(tail.map(full));
+    const body=lines.join('\n');
+    const cand=head.length?`${NOTE}\n${body}`:body;
+    if(cand.length<=limit) return cand;
+  }
+
+  // 阶梯用尽仍超长：从「保留最近 N 章」逐步缩减到 1 章，
+  // 保证至少最后一章完整可读，而不是硬截断把末章也切掉。
+  for(let k=recent;k>=1;k--){
+    const cand='（更早章节的摘要已省略）\n'+items.slice(-k).map(full).join('\n');
+    if(cand.length<=limit) return cand;
+  }
+  // 连单章都超长：压缩该章 + 硬截断兜底
+  const last=items[items.length-1];
+  let out=`（更早章节的摘要已省略）\n第${last.no}章${last.title?`《${last.title}》`:''}：`
+    +briefText(last.text,Math.max(10,limit-30));
+  if(out.length>limit){
+    out=out.slice(0,Math.max(1,limit-1)).replace(/[\s。，、；：]+$/,'')+'…';
+  }
+  return out;
+}
+
+/* 摘要覆盖范围描述，用于界面提示 */
+function summaryCoverage(){
+  const items=summaryChapters();
+  if(!items.length) return {count:0,nos:[],from:0,to:0,chars:0};
+  const nos=items.map(x=>x.no);
+  const txt=buildSummaryText();
+  return {count:items.length,nos,from:nos[0],to:nos[nos.length-1],chars:txt.length};
+}
+
+/* ==================================================================
+   6. 文本差异（修订标记：红色=删去，绿色=增添）
+   ================================================================== */
+function diffMerge(parts){
+  const out=[];
+  for(const p of parts){
+    if(!p.text) continue;
+    const last=out[out.length-1];
+    if(last&&last.type===p.type) last.text+=p.text;
+    else out.push({type:p.type,text:p.text});
+  }
+  return out;
+}
+
+/* 中文标点／空白：吸附到前一个字符，避免标点被单独标成增删而碎片化
+   （例：「…见证人」的句号恰好是两段公共字符时，右引号会孤零零标绿） */
+const DIFF_PUNCT=/[\s\u3000。，、；：？！「」『』（）〔〕【】《》〈〉…—～·．,.:;?!'"”’\u2018\u2019\u201C\u201D\-\/\\|()\[\]{}]/;
+
+function tokenizeForDiff(text){
+  const out=[]; const n=text.length; let i=0;
+  while(i<n){
+    let t=text[i]; i++;
+    while(i<n && DIFF_PUNCT.test(text[i])){ t+=text[i]; i++; }
+    out.push(t);
+  }
+  return out;
+}
+
+/* LCS 差异（按 token 比对） */
+function lcsDiffTokens(A,B){
+  const n=A.length, m=B.length;
+  if(!n) return m?[{type:'ins',text:B.join('')}]:[];
+  if(!m) return [{type:'del',text:A.join('')}];
+  if(n*m>6e6) return [{type:'del',text:A.join('')},{type:'ins',text:B.join('')}];
+
+  const W=m+1;
+  const dp=new Uint32Array((n+1)*W);
+  for(let i=n-1;i>=0;i--){
+    const row=i*W, nxt=(i+1)*W;
+    for(let j=m-1;j>=0;j--){
+      dp[row+j] = A[i]===B[j] ? dp[nxt+j+1]+1
+                : Math.max(dp[nxt+j], dp[row+j+1]);
+    }
+  }
+  const out=[];
+  const push=(t,txt)=>{
+    const l=out[out.length-1];
+    if(l&&l.type===t) l.text+=txt; else out.push({type:t,text:txt});
+  };
+  let i=0,j=0;
+  while(i<n&&j<m){
+    if(A[i]===B[j]){ push('same',A[i]); i++; j++; }
+    else if(dp[(i+1)*W+j]>=dp[i*W+j+1]){ push('del',A[i]); i++; }
+    else { push('ins',B[j]); j++; }
+  }
+  while(i<n) push('del',A[i++]);
+  while(j<m) push('ins',B[j++]);
+  return out;
+}
+
+/* 先剥公共前后缀，再做 LCS —— 文学文本改动通常局部，这样能把待比对区间压得很小。
+   注：不额外「吸收」夹在变化块之间的短公共片段——那样会把同一个字同时标红标绿，
+   反而让人分不清到底改没改。未变即不标，才是修订视图该有的语义。 */
+function diffChars(a,b){
+  a=a||''; b=b||'';
+  if(a===b) return a?[{type:'same',text:a}]:[];
+  const A=tokenizeForDiff(a), B=tokenizeForDiff(b);
+
+  let s=0;
+  const mn=Math.min(A.length,B.length);
+  while(s<mn && A[s]===B[s]) s++;
+  let ea=A.length, eb=B.length;
+  while(ea>s && eb>s && A[ea-1]===B[eb-1]){ ea--; eb--; }
+
+  const out=[];
+  if(s>0) out.push({type:'same',text:A.slice(0,s).join('')});
+  for(const p of lcsDiffTokens(A.slice(s,ea), B.slice(s,eb))) out.push(p);
+  if(ea<A.length) out.push({type:'same',text:A.slice(ea).join('')});
+  return diffMerge(out);
+}
+
+/* 渲染成带标记的 HTML。片段过多时返回 null，由调用方退回纯文本 */
+function renderDiffHtml(parts){
+  if(parts.length>4000) return null;
+  let html='';
+  for(const p of parts){
+    if(p.type==='same') html+=esc(p.text);
+    else html+=`<span class="${p.type==='del'?'diff-del':'diff-ins'}">${esc(p.text)}</span>`;
+  }
+  return html;
+}
+
+function diffStat(parts){
+  let del=0,ins=0;
+  for(const p of parts){
+    if(p.type==='del') del+=countWords(p.text);
+    else if(p.type==='ins') ins+=countWords(p.text);
+  }
+  return {del,ins,identical:del===0&&ins===0};
+}
+
+/* ==================================================================
+   7. AI 任务执行
+   ================================================================== */
+let lastDraft='', lastOutline='', lastSparks='';
+let lastRevise=null;        // {text, mode, selRange:{start,end}|null, chapterNo}
+let lastRevOriginal='';     // 修订前的原文（用于差异对比）
+let reviseUndo=null;        // {chapterNo, content} 用于撤销
+
+/* 渲染修订预览：按偏好显示「修订标记」或「纯文本」 */
+function renderRevOutput(){
+  const out=document.getElementById('revOut');
+  if(!out) return;
+  if(!lastRevise){ out.textContent=''; return; }
+  const bar=document.getElementById('revViewBar');
+  const stat=document.getElementById('revStat');
+  const tg=document.getElementById('btnRevToggle');
+  const useMark=DB.revDiffMode!=='plain';
+
+  let parts=null;
+  if(lastRevOriginal) parts=diffChars(lastRevOriginal,lastRevise.text);
+  if(parts&&stat){
+    const st=diffStat(parts);
+    stat.innerHTML = st.identical
+      ? '<b>与原文一致</b>（未检测到改动）'
+      : `删去 <b class="c-del">${fmt(st.del)}</b> 字 · 增添 <b class="c-ins">${fmt(st.ins)}</b> 字`;
+  }
+  const html=(useMark&&parts)?renderDiffHtml(parts):null;
+
+  if(html){
+    out.innerHTML=html;
+    if(tg) tg.textContent='切换为纯文本';
+  }else{
+    out.innerHTML='';
+    out.textContent=lastRevise.text;
+    if(parts&&tg) tg.textContent='显示修订标记';
+    else if(tg) tg.textContent='切换为纯文本';
+  }
+  if(bar) bar.hidden=false;
+}
+
+/* 读取正文框的当前选中范围 */
+function getMsSelection(){
+  const el=document.getElementById('ms');
+  if(!el) return null;
+  const s=el.selectionStart, e=el.selectionEnd;
+  if(s==null||e==null||s===e) return null;
+  return {start:s,end:e,text:el.value.slice(s,e)};
+}
+/* 刷新选中提示 */
+function paintSelInfo(){
+  const el=document.getElementById('selInfo'), tip=document.getElementById('selTip');
+  if(!el) return;
+  const sel=getMsSelection();
+  const n=sel?countWords(sel.text):0;
+  if(sel){
+    el.textContent=`已选中 ${fmt(n)} 字`;
+    el.style.background='var(--blue-soft)'; el.style.color='var(--blue)';
+    if(tip){
+      tip.style.display='';
+      tip.innerHTML=`已选中 ${fmt(n)} 字。把「修改模式」设为<b>「局部修订」</b>，AI 就只会改这一段，其余正文不受影响。`;
+    }
+  }else{
+    el.textContent='未选中文本';
+    el.style.background='var(--panel-2)'; el.style.color='';
+    if(tip) tip.style.display='none';
+  }
+}
+
+async function runRevise(btn){
+  const c=DB.chapters[curChap];
+  const instr=(document.getElementById('revInstruction')||{}).value||'';
+  const mode=(document.getElementById('revMode')||{}).value||'full';
+  const target=parseInt((document.getElementById('revTarget')||{}).value,10)||0;
+
+  if(!(c.content||'').trim()){toast('本章没有正文可修订');return;}
+  if(!instr.trim()&&mode!=='polish'){
+    if(!confirm('还没有填写修改要求。\n\n继续将只做最保守的通顺化处理，确定吗？')) return;
+  }
+  const sel=getMsSelection();
+  let useMode=mode, selRange=null, payloadSel='';
+  if(mode==='selection'){
+    if(!sel){ alert('「局部修订」需要先在正文里选中要改的片段。\n\n请回到上方「本章正文」，用鼠标选中一段文字再点执行。'); return; }
+    selRange={start:sel.start,end:sel.end}; payloadSel=sel.text;
+  }
+
+  const out=document.getElementById('revOut'), m=document.getElementById('revMeta'),
+        act=document.getElementById('revActions');
+  out.innerHTML=''; act.hidden=true; setBusy(btn,true); const t0=Date.now();
+
+  // 记录修订要求，便于下次接着改
+  c._revNote=instr; save();
+
+  try{
+    let text='';
+    await callAI({
+      taskKey:'draft_llm',
+      prompt:P.revise({instruction:instr,mode:useMode,sel:payloadSel,
+        full:c.content,chapterNo:curChap+1,targetKeep:target}),
+      onDelta:d=>{text+=d;out.textContent=text;out.scrollTop=out.scrollHeight;},
+      onReason:r=>reasonHook(m,r)
+    });
+    lastRevise={text:cleanReviseText(text),mode:useMode,
+      selRange:selRange,chapterNo:curChap+1};
+    lastRevOriginal = useMode==='selection' ? payloadSel : c.content;
+    const wcR=countWords(lastRevise.text);
+    log(`第 ${curChap+1} 章修订完成（${modeLabel(useMode)}），${wcR} 字`);
+    meta(m,Date.now()-t0,wcR);
+    renderRevOutput();
+    const rw=document.getElementById('revWc');
+    if(rw) rw.textContent=useMode==='selection'
+      ? `将替换选中的 ${fmt(countWords(payloadSel))} 字 → 新片段 ${fmt(wcR)} 字`
+      : `修订稿 ${fmt(wcR)} 字（原 ${fmt(countWords(c.content))} 字）`;
+    act.hidden=false;
+    const ub=document.getElementById('btnRevUndo');
+    if(ub&&reviseUndo&&reviseUndo.chapterNo===curChap+1) ub.hidden=false;
+  }catch(err){
+    log('修订失败：'+err.message);
+    showErr(out,'修订失败：'+err.message);
+  }finally{ setBusy(btn,false,'执行修订'); }
+}
+
+function modeLabel(m){
+  return {selection:'局部修订',full:'整章重写',insert:'增写情节',
+          cut:'删改情节',polish:'润色改写'}[m]||m;
+}
+
+/* 清理模型可能带出的引导语与 Markdown 包装 */
+function cleanReviseText(t){
+  let s=(t||'').trim();
+  s=s.replace(/^```[a-z]*\n?/i,'').replace(/\n?```$/,'');
+  s=s.replace(/^(以下是|这是)(修改|修订|润色|删改|增写)?(后)?的?(正文|内容|文本|片段)[：:]\s*/,'');
+  s=s.replace(/^(修改后|修订后|润色后|删改后|增写后)的?(正文|内容|文本|片段)[：:]\s*/,'');
+  return s.trim();
+}
+
+function applyRevise(){
+  if(!lastRevise||!lastRevise.text){toast('没有可应用的修订稿');return;}
+  const c=DB.chapters[curChap];
+  if(lastRevise.chapterNo!==curChap+1){
+    toast('章节已切换，请重新执行修订');return;
+  }
+  // 记录撤销点
+  reviseUndo={chapterNo:curChap+1,content:c.content||''};
+
+  if(lastRevise.selRange){
+    const {start,end}=lastRevise.selRange;
+    const before=(c.content||'').slice(0,start);
+    const after=(c.content||'').slice(end);
+    c.content=before+lastRevise.text+after;
+    log(`第 ${curChap+1} 章：已替换选中片段`);
+  }else{
+    c.content=lastRevise.text;
+    log(`第 ${curChap+1} 章：已应用整章修订`);
+  }
+  if(c.status==='待写') c.status='草稿';
+  lastRevise=null; save(); render();
+  toast('修订已应用到正文');
+}
+
+function undoRevise(){
+  if(!reviseUndo) return;
+  const c=DB.chapters[reviseUndo.chapterNo-1];
+  if(!c) return;
+  c.content=reviseUndo.content;
+  log(`第 ${reviseUndo.chapterNo} 章：已撤销修订`);
+  reviseUndo=null; save(); render();
+  toast('已撤销上一次修订');
+}
+
+function setBusy(btn,busy,label){
+  if(!btn)return;
+  if(busy){btn._old=btn.textContent;btn.disabled=true;btn.innerHTML='<span class="spin"></span> 生成中…';}
+  else{btn.disabled=false;btn.textContent=label||btn._old||'生成';}
+}
+function meta(el,ms,chars){
+  if(el)el.innerHTML=`<span>耗时 ${(ms/1000).toFixed(1)}s</span><span>输出 ${fmt(chars)} 字</span>`;
+}
+/* 思考过程实时反馈：DeepSeek 思考模式下正文可能延迟很久才出现，
+   若不提示，用户会以为卡住 */
+function reasonHook(el,text){
+  if(!el) return;
+  el.innerHTML=`<span class="spin"></span> 模型正在思考… 已产出 ${fmt(countWords(text))} 字思考内容`;
+}
+function showErr(el,msg){
+  if(!el)return;
+  el.innerHTML=`<div class="alert err" style="margin:0">${esc(msg)}</div>`;
+}
+
+/* --- 架构 --- */
+async function runArch(btn){
+  const out=document.getElementById('archOut'),m=document.getElementById('archMeta');
+  out.innerHTML='';setBusy(btn,true);const t0=Date.now();
+  try{
+    let text='';
+    await callAI({taskKey:'architecture_llm',prompt:P.architecture(),
+      onDelta:d=>{text+=d;out.textContent=text;out.scrollTop=out.scrollHeight;},
+      onReason:r=>reasonHook(m,r)});
+    DB.theme._arch=text;log(`架构生成完成，${countWords(text)} 字`);save();
+    meta(m,Date.now()-t0,countWords(text));
+    render();toast('架构已生成并保存');
+  }catch(err){log('架构生成失败：'+err.message);showErr(out,'生成失败：'+err.message);}
+  finally{setBusy(btn,false,'开始生成');}
+}
+
+/* --- 大纲 --- */
+async function runOutline(btn){
+  const out=document.getElementById('outOut'),m=document.getElementById('outMeta'),
+        act=document.getElementById('outActions');
+  out.innerHTML='';act.hidden=true;setBusy(btn,true);const t0=Date.now();
+  const n=parseInt(document.getElementById('outlineN').value,10)||20;
+  try{
+    let text='';
+    await callAI({taskKey:'outline_llm',prompt:P.outline(n),
+      onDelta:d=>{text+=d;out.textContent=text;out.scrollTop=out.scrollHeight;},
+      onReason:r=>reasonHook(m,r)});
+    lastOutline=text;DB.pending.outline=text;log(`大纲生成完成（${n} 章），${countWords(text)} 字`);save();
+    meta(m,Date.now()-t0,countWords(text));
+    act.hidden=false;
+  }catch(err){log('大纲生成失败：'+err.message);showErr(out,'生成失败：'+err.message);}
+  finally{setBusy(btn,false,'生成大纲');}
+}
+function applyOutline(){
+  if(!lastOutline){toast('没有可写入的内容');return;}
+  // 解析「第n章 - 标题 / 定位：… / 简述：…」
+  const blocks=lastOutline.split(/(?=第\s*\d+\s*章)/).filter(s=>/第\s*\d+\s*章/.test(s));
+  if(!blocks.length){alert('未能从输出中解析出章节，请检查格式或手动复制。');return;}
+  const parsed=blocks.map(bl=>{
+    const hm=bl.match(/第\s*(\d+)\s*章\s*[-—–:：]?\s*([^\n]*)/);
+    const no=hm?parseInt(hm[1],10):0;
+    let title=hm?(hm[2]||'').replace(/[《》「」]/g,'').trim():'';
+    const sm=bl.match(/(?:本章)?简述\s*[:：]\s*([^\n]+)/);
+    const summary=sm?sm[1].trim():'';
+    return {no,title,summary};
+  }).filter(x=>x.no>0).sort((a,b)=>a.no-b.no);
+
+  const mode=document.getElementById('outlineMode').value;
+  if(mode==='replace'&&!confirm(`将替换现有 ${DB.chapters.length} 章，确定吗？`))return;
+  if(mode==='replace')DB.chapters=[];
+
+  let added=0;
+  parsed.forEach(p=>{
+    const idx=DB.chapters.findIndex((c,i)=>i+1===p.no);
+    if(mode==='append'||idx<0){
+      while(DB.chapters.length<p.no-1)DB.chapters.push({title:'',summary:'',status:'待写',content:''});
+      DB.chapters[p.no-1]={title:p.title,summary:p.summary,status:'待写',content:''};
+    }else{
+      DB.chapters[idx].title=p.title||DB.chapters[idx].title;
+      DB.chapters[idx].summary=p.summary||DB.chapters[idx].summary;
+    }
+    added++;
+  });
+  log(`大纲写入 ${added} 章`);lastOutline='';DB.pending.outline='';
+  rememberUI();save();render();toast(`已写入 ${added} 章`);
+}
+
+/* --- 灵感 --- */
+async function runSparks(btn){
+  const out=document.getElementById('sparkOut'),m=document.getElementById('sparkMeta'),
+        act=document.getElementById('sparkActions');
+  out.innerHTML='';act.hidden=true;setBusy(btn,true);const t0=Date.now();
+  const topic=document.getElementById('sparkTopic').value.trim();
+  const n=parseInt(document.getElementById('sparkN').value,10)||6;
+  try{
+    let text='';
+    await callAI({taskKey:'draft_llm',prompt:P.sparks(topic,n),
+      onDelta:d=>{text+=d;out.textContent=text;out.scrollTop=out.scrollHeight;},
+      onReason:r=>reasonHook(m,r)});
+    lastSparks=text;DB.pending.sparks=text;log(`生成 ${n} 条灵感`);save();
+    meta(m,Date.now()-t0,countWords(text));act.hidden=false;
+  }catch(err){log('灵感生成失败：'+err.message);showErr(out,'生成失败：'+err.message);}
+  finally{setBusy(btn,false,'生成');}
+}
+function addSparks(){
+  const lines=lastSparks.split('\n')
+    .map(l=>l.replace(/^\s*(\d+[.、)]|[-*•])\s*/,'').trim())
+    .filter(l=>l.length>8);
+  if(!lines.length){toast('没有解析到内容');return;}
+  lines.forEach(l=>DB.scenes.push({tag:'AI',text:l,used:false}));
+  log(`添加 ${lines.length} 条灵感碎片`);lastSparks='';DB.pending.sparks='';
+  save();render();toast(`已添加 ${lines.length} 条`);
+}
+
+/* --- 章节 --- */
+function showPrompt(){
+  const guide=document.getElementById('chapGuide').value.trim();
+  DB.chapters[curChap].guide=guide;
+  const p=P.chapter(curChap+1,guide);
+  const out=document.getElementById('chapOut');
+  out.textContent=p;
+  document.getElementById('chapActions').hidden=false;
+  document.getElementById('draftWc').textContent=`提示词 ${p.length} 字符`;
+  toast('提示词已显示在预览区');
+}
+async function runChapter(btn){
+  const out=document.getElementById('chapOut'),m=document.getElementById('chapMeta'),
+        act=document.getElementById('chapActions');
+  out.innerHTML='';act.hidden=true;setBusy(btn,true);const t0=Date.now();
+  const guide=document.getElementById('chapGuide').value.trim();
+  DB.chapters[curChap].guide=guide;save();
+  try{
+    let text='';
+    await callAI({taskKey:'draft_llm',prompt:P.chapter(curChap+1,guide),
+      onDelta:d=>{text+=d;out.textContent=text;out.scrollTop=out.scrollHeight;},
+      onReason:r=>reasonHook(m,r)});
+    lastDraft=text;DB.pending.draft=text;
+    log(`第 ${curChap+1} 章草稿生成完成，${countWords(text)} 字`);save();
+    meta(m,Date.now()-t0,countWords(text));
+    document.getElementById('draftWc').textContent=`本次生成 ${fmt(countWords(text))} 字`;
+    act.hidden=false;
+  }catch(err){log(`第 ${curChap+1} 章生成失败：`+err.message);showErr(out,'生成失败：'+err.message);}
+  finally{setBusy(btn,false,`生成第 ${curChap+1} 章`);}
+}
+function applyDraft(append){
+  if(!lastDraft){toast('没有可写入的内容');return;}
+  const c=DB.chapters[curChap];
+  c.content = append && c.content ? c.content.replace(/\s+$/,'')+'\n\n'+lastDraft : lastDraft;
+  if(c.status==='待写')c.status='草稿';
+  lastDraft='';DB.pending.draft='';
+  save();render();toast(append?'已追加到正文':'已写入正文');
+}
+async function runExpand(btn){
+  const c=DB.chapters[curChap];
+  const out=document.getElementById('auxOut'),m=document.getElementById('msMeta');
+  out.innerHTML='';setBusy(btn,true);const t0=Date.now();
+  const target=DB.theme._wordTarget||3000;
+  out.textContent='扩写中…';
+  try{
+    let text='';
+    await callAI({taskKey:'expand_llm',prompt:P.expand(c.content||'',target),
+      onDelta:d=>{text+=d;out.textContent=text;out.scrollTop=out.scrollHeight;},
+      onReason:r=>reasonHook(m,r)});
+    c.content=text;if(c.status==='待写')c.status='草稿';
+    log(`第 ${curChap+1} 章扩写完成，${countWords(text)} 字`);save();
+    meta(m,Date.now()-t0,countWords(text));
+    render();toast('扩写完成');
+  }catch(err){log('扩写失败：'+err.message);showErr(out,'扩写失败：'+err.message);}
+  finally{setBusy(btn,false,`扩写到 ${fmt(target)} 字`);}
+}
+async function runReview(btn){
+  const c=DB.chapters[curChap];
+  const out=document.getElementById('auxOut'),m=document.getElementById('msMeta');
+  out.innerHTML='';setBusy(btn,true);const t0=Date.now();
+  try{
+    let text='';
+    await callAI({taskKey:'review_llm',prompt:P.review(c.content||''),
+      onDelta:d=>{text+=d;out.textContent=text;out.scrollTop=out.scrollHeight;},
+      onReason:r=>reasonHook(m,r)});
+    log(`第 ${curChap+1} 章审校完成`);save();
+    meta(m,Date.now()-t0,countWords(text));toast('审校完成');
+  }catch(err){log('审校失败：'+err.message);showErr(out,'审校失败：'+err.message);}
+  finally{setBusy(btn,false,'一致性审校');}
+}
+/* 生成本章摘要 → 存入 chapter.sum → 整体摘要自动重算。
+   注意：全程不调用 render()，只做局部 DOM 更新，
+   否则会重建视图、把刚流式输出的内容清空。 */
+async function runSummary(btn){
+  const c=DB.chapters[curChap];
+  const out=document.getElementById('auxOut'),m=document.getElementById('msMeta');
+  if(!(c.content||'').trim()){toast('本章还没有正文');return;}
+  out.innerHTML='';setBusy(btn,true);const t0=Date.now();
+
+  const before=buildSummaryText();       // 改动前的整体摘要，用于对比
+  try{
+    let text='';
+    await callAI({taskKey:'summary_llm',
+      prompt:P.chapterSum(c.content||'',curChap+1,c.title||''),
+      onDelta:d=>{text+=d;out.innerHTML=`<div style="font-size:11.5px;color:var(--ink-3);margin-bottom:8px">
+        <span class="spin"></span> 正在生成本章摘要…</div>`+esc(text);},
+      onReason:r=>reasonHook(m,r)});
+
+    c.sum=cleanReviseText(text);         // 复用引导语清洗
+    if(c.sum) c.sumUpdated=nowIso();
+    save();
+
+    // 局部更新界面，不重建视图
+    refreshSummaryUI(before);
+
+    const chars=countWords(c.sum);
+    meta(m,Date.now()-t0,chars);
+    out.innerHTML=`<div style="font-size:11.5px;color:var(--teal);margin-bottom:8px">
+      ✓ 第 ${curChap+1} 章摘要已生成（${fmt(chars)} 字），整体前文摘要已自动重算</div>`
+      +esc(c.sum);
+    log(`第 ${curChap+1} 章摘要已更新（${chars} 字）`);
+    toast('本章摘要已更新');
+  }catch(err){
+    log('摘要更新失败：'+err.message);
+    out.innerHTML='';
+    showErr(out,'更新失败：'+err.message);
+  }finally{ setBusy(btn,false,'生成本章摘要'); }
+}
+
+/* 只更新与摘要相关的 DOM 片段 */
+function refreshSummaryUI(before){
+  const ta=document.getElementById('sumPreview');
+  if(ta) ta.value=buildSummaryText();
+  const info=document.getElementById('sumInfo');
+  if(info) info.innerHTML=summaryInfoHtml();
+  const cs=document.getElementById('chapSumBox');
+  if(cs){
+    const s=(DB.chapters[curChap]||{}).sum||'';
+    cs.value=s;
+  }
+  // 顺手刷新字数统计 pill（不影响其它区块）
+  const wcAll=document.getElementById('wcAll');
+  if(wcAll){
+    const all=DB.chapters.reduce((x,ch)=>x+countWords(ch.content||''),0);
+    wcAll.textContent='全书 '+fmt(all)+' 字';
+  }
+  // 摘要变化提示（对比 before / 现在）
+  const note=document.getElementById('sumDiffNote');
+  if(note){
+    const after=buildSummaryText();
+    if(before===undefined||before===null){note.innerHTML='';}
+    else if(before===after){
+      note.innerHTML='<span style="color:var(--ink-3)">整体摘要无变化</span>';
+    }
+    else if(!after.trim()){
+      note.innerHTML='<span style="color:var(--coral)">整体摘要已清空（'+fmt(countWords(before))+
+        ' 字）。各章正文未受影响，可点上方「撤销清空」还原。</span>';
+    }
+    else{
+      const cov=summaryCoverage();
+      note.innerHTML=`<span style="color:var(--ink-2)">整体摘要已更新，现覆盖 ${cov.count} 章（第 ${cov.from}–${cov.to} 章），共 ${fmt(cov.chars)} 字</span>`;
+    }
+  }
+}
+
+function summaryInfoHtml(){
+  const cov=summaryCoverage();
+  const cfg=DB.summaryCfg||DEFAULT_SUM;
+  const parts=[];
+  parts.push(`<span class="pill">覆盖 ${cov.count} 章</span>`);
+  if(cov.count) parts.push(`<span class="pill">第 ${cov.from}–${cov.to} 章</span>`);
+  parts.push(`<span class="pill">${fmt(cov.chars)} 字</span>`);
+  parts.push(`<span class="pill">${cfg.mode==='manual'?'手动模式':'自动汇总'}</span>`);
+
+  const missing=[];
+  DB.chapters.forEach((ch,i)=>{
+    if((ch.content||'').trim() && ch.status!=='待写' && !(ch.sum||'').trim())
+      missing.push(i+1);
+  });
+  let warn='';
+  if(missing.length){
+    const list=missing.length>8?missing.slice(0,8).join('、')+' 等':missing.join('、');
+    warn=`<div class="alert warn" style="margin:8px 0 0;font-size:11.5px;padding:7px 10px">
+      第 ${list} 章还没有摘要，未纳入前文摘要。到对应章节点「生成本章摘要」补齐即可。</div>`;
+  }
+  return `<div class="row" style="gap:5px">${parts.join('')}</div>${warn}`;
+}
+
+function nowIso(){ return new Date().toISOString(); }
+
+/* ---- 清空整体摘要 ----
+   自动模式下「整体摘要」是各章摘要拼装出来的，所以清空整体摘要 = 清各章摘要 + 手动摘要。
+   正文一律不动。清空前留档到 summaryCfg._undo，可一键撤销。 */
+function summarizeClearTargets(){
+  let chapters=0, chapterChars=0;
+  DB.chapters.forEach(ch=>{
+    const s=(ch.sum||'').trim();
+    if(s){ chapters++; chapterChars+=countWords(s); }
+  });
+  const manual=(DB.summaryCfg&&DB.summaryCfg.manual||'').trim();
+  return {chapters, chapterChars, hasManual:!!manual, manualChars:countWords(manual)};
+}
+function hasAnySummary(){
+  const t=summarizeClearTargets();
+  return t.chapters>0 || t.hasManual;
+}
+function clearAllSummary(){
+  const cfg=DB.summaryCfg||(DB.summaryCfg=structuredClone(DEFAULT_SUM));
+  // 留档：记录被清掉的每一份摘要，供撤销还原。
+  // 仅当此刻确有内容时才更新留档 —— 否则重复点击会用空快照把
+  // 上一次有效的留档覆盖掉，导致真正想撤销时无据可依。
+  const t=summarizeClearTargets();
+  if(t.chapters>0 || t.hasManual){
+    cfg._undo={
+      at:nowIso(),
+      chapters:DB.chapters.map((ch,i)=>({no:i+1, sum:ch.sum||'', sumUpdated:ch.sumUpdated||''}))
+                          .filter(x=>x.sum.trim()),
+      manual:cfg.manual||''
+    };
+  }else if(!cfg._undo){
+    cfg._undo={at:nowIso(),chapters:[],manual:''};
+  }
+  DB.chapters.forEach(ch=>{ ch.sum=''; delete ch.sumUpdated; });
+  cfg.manual='';
+  return cfg._undo;
+}
+function undoClearSummary(){
+  const cfg=DB.summaryCfg||DEFAULT_SUM;
+  const u=cfg._undo;
+  if(!u) return false;
+  const nRec=(u.chapters||[]).length;
+  const nMan=(u.manual||'').trim().length;
+  // 空快照（无章节摘要也无手动摘要）——没有可还原的东西
+  if(!nRec && !nMan){ delete cfg._undo; return false; }
+  // 按章号还原（章节可能已被增删，越界的跳过，避免错位）
+  let restored=0, skipped=0;
+  (u.chapters||[]).forEach(rec=>{
+    const ch=DB.chapters[rec.no-1];
+    if(ch){ ch.sum=rec.sum; if(rec.sumUpdated) ch.sumUpdated=rec.sumUpdated; restored++; }
+    else skipped++;
+  });
+  if(u.manual) cfg.manual=u.manual;
+  delete cfg._undo;
+  return {restored,skipped};
+}
+/* 不依赖 toLocaleString 的 locale 支持（精简 ICU 环境会退化成英文格式） */
+function formatClearTime(iso){
+  if(!iso) return '';
+  const d=new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getMonth()+1}月${d.getDate()}日 ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function finalize(){
+  const c=DB.chapters[curChap];
+  if(!(c.content||'').trim()){toast('正文为空，无法定稿');return;}
+
+  // 定稿前检查摘要：没摘要会导致后续章节失去上下文
+  if(!(c.sum||'').trim()){
+    const go=confirm(
+      `第 ${curChap+1} 章还没有摘要。\n\n`+
+      `前文摘要由各章摘要拼装而成，缺了本章的摘要，`+
+      `后续章节生成时就会看不到这一章发生了什么。\n\n`+
+      `要先「生成本章摘要」再定稿吗？\n`+
+      `（点「取消」仍可继续定稿，之后随时可补）`
+    );
+    if(go){
+      const btn=document.getElementById('btnSummary');
+      if(btn) runSummary(btn);
+      return;   // 摘要生成完再手动定稿，避免流程交叉
+    }
+  }
+
+  c.status='已定稿';save();
+  const next=DB.chapters[curChap+1];
+  log(`第 ${curChap+1} 章已定稿`);
+  render();
+  toast(next?`第 ${curChap+1} 章已定稿，可继续下一章`:`第 ${curChap+1} 章已定稿（最后一章）`);
+}
+
+/* ---- Key 诊断面板 ---- */
+function paintKeyDiag(){
+  const box=document.getElementById('keyDiag');
+  const inp=document.getElementById('cfgKey');
+  if(!box||!inp) return;
+  const raw=inp.value;
+  const k=sanitizeKey(raw);
+  if(!k){ box.innerHTML='<span style="font-size:11.5px;color:var(--ink-3)">尚未填写 Key</span>'; return; }
+
+  const dirty = raw!==k;
+  const info=keyInfo(k);
+  const bits=[];
+  bits.push(`<span class="pill">${esc(info.mask)}</span>`);
+  bits.push(`<span class="pill">长度 ${info.len}</span>`);
+  bits.push(`<span class="pill">${/^sk-/.test(k)?'sk- 前缀正常':'✕ 非 sk- 前缀'}</span>`);
+  if(dirty) bits.push(`<span class="pill" style="background:var(--amber-soft);color:var(--amber)">已自动修正隐藏字符</span>`);
+
+  let warn='';
+  if(!/^sk-/.test(k))
+    warn=`<div class="alert warn" style="margin:7px 0 0;font-size:11.5px;padding:7px 10px">
+      这不像 DeepSeek 的 API Key。DeepSeek 的 Key 以 <code>sk-</code> 开头。
+      如果你从网页对话版复制的，那是拿不到 Key 的 —— 需要去
+      <code>platform.deepseek.com/api_keys</code> 创建。</div>`;
+  else if(info.len<20)
+    warn=`<div class="alert warn" style="margin:7px 0 0;font-size:11.5px;padding:7px 10px">
+      Key 长度只有 ${info.len} 位，疑似复制不完整。DeepSeek 的 Key 约 35 位，请重新完整复制。</div>`;
+  else if(info.len>60)
+    warn=`<div class="alert warn" style="margin:7px 0 0;font-size:11.5px;padding:7px 10px">
+      Key 长度 ${info.len} 位，明显偏长，可能粘进了多余内容。</div>`;
+  else
+    warn=`<div class="alert ok" style="margin:7px 0 0;font-size:11.5px;padding:7px 10px">
+      格式看起来正常。若仍报 401，说明这枚 Key 已失效或不属于当前服务商，请到平台重新生成。</div>`;
+
+  box.innerHTML=`<div class="row" style="gap:5px">${bits.join('')}</div>${warn}`;
+}
+
+/* ==================================================================
+   7. 导出
+   ================================================================== */
+function download(name,text,mime='text/plain'){
+  const b=new Blob([text],{type:mime+';charset=utf-8'});
+  const u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),1000);
+}
+function stamp(){
+  const d=new Date(),p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}`;
+}
+/* 文件名安全化：去掉路径分隔符与非法字符 */
+function safeName(){
+  const t=(DB.theme.title||'').trim()||'未命名作品';
+  return t.replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,' ').slice(0,40);
+}
+/* ---- 导出纯文本 TXT ----
+   针对中文小说阅读器优化：
+   · UTF-8 含 BOM —— 否则 Windows 记事本会把 UTF-8 误判为 GBK 而乱码
+   · CRLF 换行 —— Windows 与多数手机阅读器的兼容性最好
+   · 全角空格缩进两字 —— 中文小说的排版惯例
+   段落之间统一为单空行，避免 AI 生成的连续空行造成的松散排版。 */
+function buildNovelTxt(opts){
+  const o=Object.assign({scope:'all',indent:true,sep:'blank',titlePage:false,head:(DB.theme.title||'')},opts||{});
+
+  let items=DB.chapters.map((c,i)=>({no:i+1,c}));
+  if(o.scope==='final')       items=items.filter(x=>x.c.status==='已定稿');
+  else if(o.scope==='current')items=items.filter(x=>x.no===curChap+1);
+  items=items.filter(x=>(x.c.content||'').trim());   // 跳过无正文的章节
+
+  const out=[];
+  const book=(o.head||'').trim()||(DB.theme.title||'').trim()||'未命名作品';
+
+  // 扉页
+  if(o.titlePage){
+    out.push(book,'');
+    const epi=DB.theme.epigraphs.filter(Boolean);
+    if(epi.length) out.push('　　'+epi[0]);
+    out.push('');
+    if(DB.theme.logline) out.push('　　'+DB.theme.logline);
+    out.push('','');
+  }
+
+  items.forEach((x,idx)=>{
+    const title=(x.c.title||'').trim();
+    out.push(title?`第${x.no}章　${title}`:`第${x.no}章`);
+    out.push('');
+    // 规范化正文：统一换行、压缩连续空行
+    let body=(x.c.content||'').replace(/\r\n?/g,'\n');
+    body=body.split('\n').map(l=>l.replace(/[ \t]+$/,'')).join('\n');
+    body=body.replace(/\n{3,}/g,'\n\n').trim();
+    if(o.indent){
+      body=body.split('\n').map(l=>{
+        const t=l.trim();
+        if(!t) return '';
+        // 已带全角缩进的保持原样，避免重复缩进；其余（含对白行）统一缩进两字
+        return /^\u3000/.test(l) ? t : '　　'+t;
+      }).join('\n');
+    }
+    out.push(body);
+    if(idx<items.length-1){
+      out.push('');
+      if(o.sep==='line') out.push('※※※');
+      else if(o.sep==='page') out.push('\f');
+      out.push('');
+    }
+  });
+
+  const text=out.join('\n').replace(/\n{4,}/g,'\n\n\n').trim()+'\n';
+  const chars=items.reduce((s,x)=>s+countWords(x.c.content||''),0);
+  return {text,count:items.length,chars,book};
+}
+
+/* TXT 专用下载：加 BOM + CRLF */
+function downloadTxt(name,text){
+  const withBom='\uFEFF'+text.replace(/\r?\n/g,'\r\n');
+  const b=new Blob([withBom],{type:'text/plain;charset=utf-8'});
+  const u=URL.createObjectURL(b),a=document.createElement('a');
+  a.href=u;a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),1000);
+}
+/* 读取当前 TXT 导出选项（从界面控件） */
+function readTxtOpts(){
+  const g=id=>document.getElementById(id);
+  const o={
+    scope: g('txtScope')? g('txtScope').value : 'all',
+    indent: !g('txtIndent') || g('txtIndent').value==='1',
+    sep:   g('txtSep')? g('txtSep').value : 'blank',
+    titlePage: !!(g('txtTitlePage')&&g('txtTitlePage').value==='1'),
+    head:  g('txtHead')? g('txtHead').value.trim() : (DB.theme.title||'')
+  };
+  DB.exportOpt=o; save();
+  return o;
+}
+
+function toMarkdown(){  const L=[],total=DB.chapters.reduce((s,c)=>s+countWords(c.content||''),0);
+  L.push('# '+(DB.theme.title||'未命名作品'),'','> '+(DB.theme.logline||''),'');
+  L.push(`*全书 ${DB.chapters.length} 章，累计 ${fmt(total)} 字*`,'');
+  if(DB.theme._arch) L.push('## 小说架构','',DB.theme._arch,'');
+  L.push('## 一、主题内核','','### 核心命题','');
+  DB.theme.proposition.forEach(p=>L.push(`- **${p.layer}**：${p.text}　（情节功能：${p.scene||'—'}）`));
+  L.push('','### 主题句候选','');
+  DB.theme.epigraphs.filter(Boolean).forEach(e=>L.push(`> ${e}`));
+  L.push('');
+  if(DB.world.era||DB.world.tech.length||DB.world.rules){
+    L.push('## 二、世界观','');
+    if(DB.world.era)L.push(DB.world.era,'');
+    if(DB.world.tech.length){L.push('### 技术设定','');
+      DB.world.tech.forEach(t=>L.push(`- **${t.name}**：${t.desc||''}`));L.push('');}
+    if(DB.world.events.length){L.push('### 关键事件','');
+      DB.world.events.forEach(e=>L.push(`- ${e.time||''} ${e.text||''}`));L.push('');}
+    if(DB.world.rules)L.push('### 世界规则','',DB.world.rules,'');
+  }
+  L.push('## 三、阵营组织','');
+  DB.factions.forEach(f=>{L.push(`### ${f.name}（${f.camp}）`,'',f.claim||'','',
+    `- 现实原型：${f.proto||'—'}`);if(f.notes)L.push(`- 设计：${f.notes}`);L.push('');});
+  if(DB.characters.length){
+    L.push('## 四、人物','');
+    DB.characters.forEach(c=>{
+      L.push(`### ${c.name||'（未命名）'}`,'');
+      L.push(`- 身份：${c.role||'—'}`);L.push(`- 阵营：${c.faction||'—'}`);
+      L.push(`- 立场：${c.stand||'—'}`);L.push(`- 动机：${c.motive||'—'}`);
+      L.push(`- 秘密：${c.secret||'—'}`);L.push(`- 弧光：${c.arc||'—'}`);L.push('');
+    });
+  }
+  if(DB.scenes.length){
+    L.push('## 五、灵感碎片','');
+    DB.scenes.forEach(s=>L.push(`- ${s.used?'[已用]':'[待用]'} ${s.tag?`「${s.tag}」`:''} ${s.text||''}`));
+    L.push('');
+  }
+  L.push('## 六、章节大纲','');
+  DB.chapters.forEach((c,i)=>{
+    L.push(`### 第 ${i+1} 章　${c.title||'（未命名）'}`,'');
+    if(c.summary)L.push(c.summary,'');
+    L.push(`*状态：${c.status||'待写'}　字数：${fmt(countWords(c.content||''))}*`,'');
+  });
+  const w=DB.chapters.filter(c=>(c.content||'').trim());
+  if(w.length){
+    L.push('---','','## 正文','');
+    w.forEach(c=>{const no=DB.chapters.indexOf(c)+1;
+      L.push(`### 第 ${no} 章　${c.title||''}`,'',c.content.trim(),'');});
+  }
+  return L.join('\n');
+}
+
+/* ==================================================================
+   8. 启动
+   ================================================================== */
+
+/* --- 恢复上次的位置：视图、章节、未落盘的预览草稿 --- */
+(function restorePosition(){
+  const u=DB.ui||{};
+  route = (u.route && V[u.route]) ? u.route : 'dash';
+  const n=DB.chapters.length;
+  curChap = n ? Math.max(0,Math.min(Number(u.curChap)||0,n-1)) : 0;
+  const p=DB.pending||{};
+  lastDraft=p.draft||''; lastOutline=p.outline||''; lastSparks=p.sparks||'';
+})();
+
+/* --- 变化即记：把界面位置写回数据（防抖落盘由 save 负责） --- */
+function rememberUI(){ DB.ui={route,curChap}; }
+
+/* --- 兜底一：切到后台 / 关闭页面 / 崩溃前，同步落盘 --- */
+function emergencyFlush(){
+  if(dirty||saveT) saveNow();
+}
+window.addEventListener('beforeunload',emergencyFlush);
+window.addEventListener('pagehide',emergencyFlush);
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) emergencyFlush(); });
+
+/* --- 兜底二：心跳补写，防止进程被强杀 --- */
+setInterval(()=>{ if(dirty||saveT) saveNow(); },15000);
+
+/* --- Ctrl/Cmd + S：手动立即保存 --- */
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){
+    e.preventDefault();
+    if(saveNow()) toast('已保存 · '+new Date().toLocaleTimeString('zh-CN',
+      {hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+    else toast('保存失败，请查看顶部提示');
+  }
+});
+
+/* --- 启动自检：存储不可用 / 从备份恢复，都必须让用户知道 --- */
+(function bootCheck(){
+  if(!STORAGE.ok){
+    setSaveState('fail',storageBlockNote());
+  }else if(DB._recovered){
+    toast('主数据损坏，已从上一版备份恢复');
+    log('检测到主存储异常，已自动回退到备份快照');
+  }
+})();
+
+function render(){
+  buildNav();
+  document.getElementById('view').innerHTML=(V[route]||V.dash)();
+  paintApiState();
+  if(route==='model') paintKeyDiag();
+  if(route==='write') paintSelInfo();
+  // 状态栏：有待写盘内容就显示「待保存」，否则显示上次成功保存的时刻
+  if(!STORAGE.ok) setSaveState('fail',storageBlockNote());
+  else if(dirty||saveT) setSaveState('pending');
+  else if(DB.updated) setSaveState('ok');
+  else setSaveState('idle');
+  if(route==='dash') paintStorageInfo();
+}
+render();
+</script>
 </body>
 </html>
