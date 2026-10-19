@@ -184,6 +184,23 @@
   .quote{border-left:3px solid var(--line-strong);padding:2px 0 2px 14px;color:var(--ink-2);
     font-family:var(--serif);font-size:14px;line-height:1.9;margin:8px 0}
 
+  /* 一键成书 */
+  .cb{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--ink-2);
+    padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel);
+    cursor:pointer;line-height:1.6}
+  .cb:hover{border-color:var(--line-strong);background:var(--panel-2)}
+  .cb input{width:14px;height:14px;margin-top:2px;accent-color:var(--accent);cursor:pointer;flex:none}
+  .cb b{color:var(--ink);font-weight:500}
+  .arow{display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid var(--line);
+    font-size:12.5px}
+  .arow:last-child{border-bottom:none}
+  .arow .ano{width:46px;color:var(--ink-3);font-variant-numeric:tabular-nums;flex:none}
+  .arow .at{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .arow .aw{width:74px;text-align:right;color:var(--ink-3);flex:none}
+  .arow .as{width:52px;text-align:right;flex:none}
+  .arow.now{background:var(--accent-soft);border-radius:6px}
+  .auto-hero{border:1px solid var(--accent);background:linear-gradient(135deg,var(--accent-soft),var(--panel) 72%)}
+
   /* 修订标记：红色=删去，绿色=增添 */
   .diff-del{background:#FCEBEB;color:#A32D2D;text-decoration:line-through;
     text-decoration-color:#E24B4A;border-radius:2px}
@@ -288,6 +305,23 @@ const DEFAULT={
   goal:100000,
   logs:[],
   exportOpt:{scope:'all',indent:true,sep:'blank',titlePage:false,head:''},
+  /* 一键成书的任务状态。
+     只存「跑到哪、结果如何」，运行时的瞬时数据放在内存里的 AUTO 对象，
+     这样刷新页面后能凭 cur 从断点继续。 */
+  auto:{
+    mode:'new',        // new=重开一本 | cont=接着写没写完的章节
+    chapters:10,       // 目标章数
+    words:3000,        // 单章目标字数
+    doArch:true,       // 先自动生成总架构
+    doOutline:true,    // 先自动生成章节大纲
+    doSummary:true,    // 每章自动生成摘要（后续章节靠它续接）
+    doFinalize:true,   // 每章写完自动定稿
+    gap:3,             // 章与章之间的间隔秒数，避免触发限流
+    state:'idle',      // idle | running | paused | error | done
+    stage:'', cur:0, total:0, msg:'',
+    startedAt:'', finishedAt:'',
+    history:[]         // [{no,title,chars,secs,at}]
+  },
   revDiffMode:'mark',
   ui:{route:'dash',curChap:0},
   pending:{draft:'',outline:'',sparks:''},
@@ -346,6 +380,8 @@ function mergeDefaults(over){
   o.ui=Object.assign(structuredClone(DEFAULT.ui),o.ui||{});
   o.pending=Object.assign(structuredClone(DEFAULT.pending),o.pending||{});
   o.exportOpt=Object.assign(structuredClone(DEFAULT.exportOpt),o.exportOpt||{});
+  o.auto=Object.assign(structuredClone(DEFAULT.auto),o.auto||{});
+  if(!Array.isArray(o.auto.history)) o.auto.history=[];
   if(!Array.isArray(o.chapters)) o.chapters=[];
   if(!Array.isArray(o.logs)) o.logs=[];
   if(!Array.isArray(o.characters)) o.characters=[];
@@ -807,6 +843,8 @@ async function callAI(opts){
   try{
     r=await _callOnce(opts);
   }catch(err){
+    // 用户主动中止（暂停一键成书）时不要重试，否则会立刻又发一次请求
+    if(err && err.name==='AbortError') throw err;
     // 流式读取失败时，自动改用非流式重试一次
     if(wantStream && opts.streamOverride===undefined && !/HTTP (401|402|429)/.test(err.message)){
       log('流式调用失败，自动改用非流式重试… '+err.message.split('\n')[0]);
@@ -1261,6 +1299,7 @@ const NAV=[
   {id:'char',t:'人物',i:'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 3a4 4 0 100 8 4 4 0 000-8z'},
   {id:'scene',t:'灵感碎片',i:'M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z'},
   {g:'写作'},
+  {id:'auto',t:'一键成书',i:'M13 2L3 14h7l-1 8 10-12h-7z'},
   {id:'outline',t:'章节大纲',i:'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'},
   {id:'write',t:'AI 写作',i:'M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z'},
   {g:'系统'},
@@ -1275,7 +1314,8 @@ function buildNav(){
     :`<button class="nav-item ${route===n.id?'on':''}" data-go="${n.id}">
        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
          stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${n.i}"/></svg>
-       <span>${n.t}</span></button>`).join('');
+       <span>${n.t}${n.id==='auto'&&DB.auto&&DB.auto.state==='running'
+         ?'<i style="font-style:normal;color:var(--teal);font-size:10px;margin-left:4px">●</i>':''}</span></button>`).join('');
 }
 
 const V={};
@@ -1346,11 +1386,30 @@ V.dash=()=>{
     : '';
 
   const bookName=(DB.theme.title||'').trim();
+
+  const at=DB.auto||{};
+  const autoRunning=at.state==='running';
+  const autoCard=`
+  <div class="card auto-hero">
+    <div class="card-t">
+      <span>✦ 一键成书 <span class="hint">架构 → 大纲 → 逐章正文 → 摘要 → 定稿，一次跑完</span></span>
+      <button class="btn primary" data-go="auto">${autoRunning?'查看进度':(at.state==='paused'||at.state==='error'?'继续上次任务':'开始')}</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-2);line-height:1.85">
+      设好章数与单章字数，点一次，它替你把整本书从头写到尾。
+      ${autoRunning?`<b style="color:var(--teal)">任务正在运行</b>（第 ${at.cur||1} / ${at.total||at.chapters} 章）。`:
+        (at.state==='paused'||at.state==='error')?`<b style="color:var(--amber)">上次停在${at.cur?`第 ${at.cur} 章`:''}</b>，已写的都还在，可继续。`:
+        ''}
+      随时可暂停，已完成的章节一律保留；中途关掉网页也能从断点接着写。
+    </p>
+  </div>`;
+
   return `
   <div class="view-head"><h2>仪表盘</h2>
   <p>${bookName?`《${esc(bookName)}》`:'未命名作品'}的创作进度。数据存在本机浏览器，AI 调用直接从你的浏览器发往模型服务商，不经过任何中间服务器。</p></div>
   ${alert}
   ${legacyAlert}
+  ${autoCard}
   <div class="stats">
     <div class="stat"><div class="n">${fmt(total)}</div><div class="l">累计字数</div>
       <div class="bar"><i style="width:${pct}%"></i></div></div>
@@ -1732,7 +1791,9 @@ V.write=()=>{
   if(!DB.chapters.length){
     return `<div class="view-head"><h2>AI 写作</h2></div>
       <div class="empty">还没有章节。<br><br>
-      <button class="btn primary" data-go="outline">先去建立章节表</button></div>`;
+      <button class="btn primary" data-go="outline">先去建立章节表</button>
+      <span style="margin:0 6px;color:var(--ink-3)">或</span>
+      <button class="btn primary" data-go="auto">一键成书</button></div>`;
   }
   if(curChap>=DB.chapters.length){curChap=DB.chapters.length-1;rememberUI();}
   const c=DB.chapters[curChap], wc=countWords(c.content||'');
@@ -1894,6 +1955,144 @@ V.write=()=>{
         这一段是 AI 生成后续章节时实际读到的内容。想改它，请改对应章节的「本章摘要」。
       </div>
     </div>`}
+  </div>`;
+};
+
+/* ---------- 一键成书 ---------- */
+V.auto=()=>{
+  const c=(DB.auto||{});
+  const running=!!AUTO.running;
+  const cfg=autoCfg();
+  const a=activeCfg('draft_llm');
+  const st=c.state||'idle';
+  const total=DB.chapters.length;
+  const withBody=DB.chapters.filter(x=>(x.content||'').trim()).length;
+  const canResume=!running&&(st==='paused'||st==='error')&&(c.cur>0);
+  const mins=Math.max(1,Math.ceil(cfg.chapters*2.2));
+
+  const alert=(()=>{
+    if(running) return `<div class="alert ok">
+      <b>正在自动生成</b> —— 你可以离开本页，任务会在后台继续；只要不关闭标签页。
+      想停下就点下方「暂停」，当前这一章会作废、已完成的都保留。</div>`;
+    if(st==='error') return `<div class="alert err">
+      <b>上次运行中断：</b>${esc(c.msg||'未知错误').slice(0,800)}
+      <br>已完成的章节都保留着。点「继续」会从第 ${c.cur||1} 章接着写。</div>`;
+    if(st==='paused') return `<div class="alert warn">
+      <b>已暂停</b>${c.cur?`，停在第 ${c.cur} 章`:''}。完成的章节不会重写，点「继续」接着往下走。</div>`;
+    if(st==='done') return `<div class="alert ok">
+      <b>本次运行已完成</b>${c.finishedAt?` · ${new Date(c.finishedAt).toLocaleString('zh-CN')}`:''}。
+      共 ${fmt((c.history||[]).reduce((s,x)=>s+(x.chars||0),0))} 字。</div>`;
+    return '';
+  })();
+
+  const noKey=!a?`<div class="alert err">还没有可用的模型配置。请先到「模型配置」填一个 API Key。</div>`:'';
+
+  const hist=(c.history||[]).slice(-60).reverse();
+  const listRows=autoListHtml();
+
+  return `
+  <div class="view-head"><h2>一键成书</h2>
+  <p>填好章数和字数，点一次，它按「架构 → 大纲 → 逐章正文 → 摘要 → 定稿」的顺序把整本书跑完。
+  跑的过程中你可以走开，也可以随时暂停；已经写出来的章节永远是你的。</p></div>
+  ${alert}
+  ${noKey}
+
+  <div class="card">
+    <div class="card-t">
+      <span>生成设置 <span class="hint">${a?esc(a.name)+' · '+esc(a.cfg.model_name):'未配置模型'}</span></span>
+      <span class="row">
+        <button class="btn" id="btnAutoResume" ${canResume?'':'hidden'}>从第 ${c.cur||1} 章继续</button>
+        <button class="btn primary" id="btnAutoStart" ${a&&!running?'':'disabled'}>
+          ${running?'运行中…':(st==='paused'||st==='error'?'重新开始（清空重写）':'开始一键成书')}</button>
+        <button class="btn danger" id="btnAutoStop" ${running?'':'hidden'}>暂停</button>
+      </span>
+    </div>
+
+    <div class="grid4">
+      <div class="field"><label class="f">章节表</label>
+        <select data-bind="auto.mode" ${running?'disabled':''}>
+          <option value="new" ${cfg.mode==='new'?'selected':''}>重开一本（清空现有章节重写）</option>
+          <option value="cont" ${cfg.mode==='cont'?'selected':''}>接着写（保留已有，补未完成的）</option>
+        </select></div>
+      <div class="field"><label class="f">目标章数</label>
+        <input type="number" data-bind="auto.chapters" value="${cfg.chapters}" min="1" max="200" ${running?'disabled':''}></div>
+      <div class="field"><label class="f">单章字数</label>
+        <input type="number" data-bind="auto.words" value="${cfg.words}" min="500" max="12000" step="500" ${running?'disabled':''}></div>
+      <div class="field"><label class="f">章间间隔（秒）</label>
+        <input type="number" data-bind="auto.gap" value="${cfg.gap}" min="0" max="60" ${running?'disabled':''}></div>
+    </div>
+
+    <div class="grid2" style="margin-top:2px">
+      <label class="cb"><input type="checkbox" data-bind="auto.doArch" ${cfg.doArch?'checked':''} ${running?'disabled':''}>
+        <span><b>先生成总架构</b><br>已有架构时会跳过，不会覆盖你改过的内容</span></label>
+      <label class="cb"><input type="checkbox" data-bind="auto.doOutline" ${cfg.doOutline?'checked':''} ${running?'disabled':''}>
+        <span><b>先生成章节大纲</b><br>「接着写」模式下自动跳过，避免冲掉你手写的标题</span></label>
+      <label class="cb"><input type="checkbox" data-bind="auto.doSummary" ${cfg.doSummary?'checked':''} ${running?'disabled':''}>
+        <span><b>每章自动写摘要</b><br>强烈建议开启：下一章靠它接上前文，否则会长歪</span></label>
+      <label class="cb"><input type="checkbox" data-bind="auto.doFinalize" ${cfg.doFinalize?'checked':''} ${running?'disabled':''}>
+        <span><b>每章自动定稿</b><br>状态改成「已定稿」；不确定就先关掉，回头自己过一遍</span></label>
+    </div>
+
+    <div class="alert warn" style="margin:12px 0 0">
+      这次会连续生成 <b>${cfg.chapters}</b> 章 × 约 <b>${fmt(cfg.words)}</b> 字，
+      合计约 <b>${fmt(cfg.chapters*cfg.words)}</b> 字，预计 <b>${mins} 分钟</b>左右，token 消耗不小。
+      ${cfg.mode==='new'?'<br><b>注意：</b>「重开一本」会清空当前章节表，建议先到仪表盘导出 JSON 备份。':''}
+      ${cfg.chapters*cfg.words>300000?`<br><b>存储提醒：</b>${fmt(cfg.chapters*cfg.words)} 字已接近浏览器本地存储的容量上限（约 5 MB）。建议分几轮跑，并定期导出 JSON 备份。`:''}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-t"><span>运行状态 <span class="hint" id="autoHint">${running?'正在跑':'未在运行'}</span></span>
+      <span class="pill" id="autoCount">${(c.history||[]).length} / ${c.total||cfg.chapters} 章</span></div>
+    <div class="row" style="margin-bottom:7px">
+      <span id="autoStage" style="font-size:13px">${running
+        ? '<span class="spin"></span> 正在准备…'
+        : (st==='done'?'✓ 已完成':st==='error'?'× 已中断':st==='paused'?'❚❚ 已暂停':'尚未开始')}</span>
+      <span style="flex:1"></span>
+      <span class="pill" id="autoPct">${(()=>{
+        const t=(c.total||cfg.chapters)||1;
+        return Math.min(100,Math.round(((c.history||[]).length)/t*100));
+      })()}%</span>
+    </div>
+    <div class="bar"><i id="autoBar" style="width:${(()=>{
+      const t=(c.total||cfg.chapters)||1;
+      return Math.min(100,Math.round(((c.history||[]).length)/t*100));
+    })()}%"></i></div>
+    <div class="ai-meta" id="autoStats"></div>
+    <div class="ai-out" id="autoLive" style="max-height:34vh"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-t"><span>章节进度</span>
+      <span class="hint">${withBody} / ${total||cfg.chapters} 章已有正文</span></div>
+    ${total?`<div id="autoList" style="max-height:320px;overflow:auto">${listRows}</div>`
+      :`<div class="empty">章节表还是空的。点上面的「开始一键成书」，它会先把大纲建起来。</div>`}
+  </div>
+
+  ${hist.length?`
+  <div class="card">
+    <div class="card-t"><span>本次记录</span><span class="hint">最近 ${hist.length} 章 · 倒序</span></div>
+    <div style="max-height:260px;overflow:auto">
+      ${hist.map(h=>`<div class="arow">
+        <span class="ano">${h.no}</span>
+        <span class="at">${esc(h.title||'（未命名）')}</span>
+        <span class="aw">${fmt(h.chars||0)} 字</span>
+        <span class="as" style="color:var(--ink-3)">${h.secs?h.secs+'s':''}</span>
+      </div>`).join('')}
+    </div>
+  </div>`:''}
+
+  <div class="card">
+    <div class="card-t">它是怎么跑的</div>
+    <div style="font-size:12.5px;color:var(--ink-2);line-height:1.95">
+      <b>1. 架构</b>（可跳过）—— 读你的作品名、类型、一句话主题、人物与世界观，产出一份总架构，存进「AI 生成架构」。<br>
+      <b>2. 大纲</b>（可跳过）—— 按你给的章数切分节奏，解析成章节表；解析失败就退化成空标题硬写。<br>
+      <b>3. 逐章</b>—— 每章依次做三件事：写正文 → 生成这一章的摘要 → 定稿。摘要进的是「本章摘要」，
+      下一章靠它接前文，所以顺序不能颠倒。<br>
+      <b>4. 断点</b>—— 每完成一章就落盘一次。刷新、断网、关标签页都不要紧：已完成的章节在，
+      回到本页点「继续」就从中断的那章接着跑。<br>
+      <b>5. 暂停的代价</b>—— 正在写的那一章会作废（不会留下半截稿），重跑时从头生成。
+    </div>
   </div>`;
 };
 
@@ -2581,7 +2780,8 @@ V.library=()=>{
    ================================================================== */
 document.addEventListener('input',e=>{
   const p=e.target.dataset.bind;if(!p)return;
-  const v=e.target.type==='number'?Number(e.target.value||0):e.target.value;
+  const v=e.target.type==='checkbox' ? !!e.target.checked
+        : e.target.type==='number' ? Number(e.target.value||0) : e.target.value;
   setPath(DB,p,v);save();
   if(e.target.id==='ms'){
     const wc=countWords(e.target.value);
@@ -2854,6 +3054,9 @@ document.addEventListener('click',e=>{
       break;}
 
     case 'btnGenArch': runArch(b);break;
+    case 'btnAutoStart': runAuto(false);break;
+    case 'btnAutoResume': runAuto(true);break;
+    case 'btnAutoStop': stopAuto();break;
     case 'btnCopyArch': navigator.clipboard?.writeText(DB.theme._arch||'').then(()=>toast('已复制'));break;
     case 'btnClearArch': if(confirm('清除架构文本？')){DB.theme._arch='';save();render();}break;
     case 'btnGenOutline': runOutline(b);break;
@@ -3448,11 +3651,10 @@ async function runOutline(btn){
   }catch(err){log('大纲生成失败：'+err.message);showErr(out,'生成失败：'+err.message);}
   finally{setBusy(btn,false,'生成大纲');}
 }
-function applyOutline(){
-  if(!lastOutline){toast('没有可写入的内容');return;}
-  // 解析「第n章 - 标题 / 定位：… / 简述：…」
-  const blocks=lastOutline.split(/(?=第\s*\d+\s*章)/).filter(s=>/第\s*\d+\s*章/.test(s));
-  if(!blocks.length){alert('未能从输出中解析出章节，请检查格式或手动复制。');return;}
+/* 解析「第n章 - 标题 / 定位：… / 简述：…」格式的大纲文本。
+   抽成独立函数，供「手动写入章节表」与「一键成书」共用。 */
+function parseOutlineText(text){
+  const blocks=String(text||'').split(/(?=第\s*\d+\s*章)/).filter(s=>/第\s*\d+\s*章/.test(s));
   const parsed=blocks.map(bl=>{
     const hm=bl.match(/第\s*(\d+)\s*章\s*[-—–:：]?\s*([^\n]*)/);
     const no=hm?parseInt(hm[1],10):0;
@@ -3462,10 +3664,13 @@ function applyOutline(){
     return {no,title,summary};
   }).filter(x=>x.no>0).sort((a,b)=>a.no-b.no);
 
-  const mode=document.getElementById('outlineMode').value;
-  if(mode==='replace'&&!confirm(`将替换现有 ${DB.chapters.length} 章，确定吗？`))return;
-  if(mode==='replace')DB.chapters=[];
-
+  // 模型偶尔会把同一章输出两遍，按章号去重（留第一个）
+  const seen=new Set();
+  return parsed.filter(x=>{ if(seen.has(x.no))return false; seen.add(x.no); return true; });
+}
+/* 把解析结果写进章节表。replace=清空重写，append=往后接。返回写入章数。 */
+function writeOutlineParsed(parsed,mode){
+  if(mode==='replace') DB.chapters=[];
   let added=0;
   parsed.forEach(p=>{
     const idx=DB.chapters.findIndex((c,i)=>i+1===p.no);
@@ -3478,6 +3683,17 @@ function applyOutline(){
     }
     added++;
   });
+  return added;
+}
+function applyOutline(){
+  if(!lastOutline){toast('没有可写入的内容');return;}
+  const parsed=parseOutlineText(lastOutline);
+  if(!parsed.length){alert('未能从输出中解析出章节，请检查格式或手动复制。');return;}
+
+  const mode=document.getElementById('outlineMode').value;
+  if(mode==='replace'&&!confirm(`将替换现有 ${DB.chapters.length} 章，确定吗？`))return;
+
+  const added=writeOutlineParsed(parsed,mode);
   log(`大纲写入 ${added} 章`);lastOutline='';DB.pending.outline='';
   rememberUI();save();render();toast(`已写入 ${added} 章`);
 }
@@ -3806,6 +4022,346 @@ function paintKeyDiag(){
 }
 
 /* ==================================================================
+   6.5 一键成书
+   ------------------------------------------------------------------
+   把「架构 → 大纲 → 逐章（正文+摘要+定稿）」串成一条自动流水线。
+
+   两条铁律（改这个模块前务必记住）：
+   1. 运行期间**绝不调用 render()**。render 会重建 #view，把正在流式输出的
+      实时预览清空。所有进度更新只走 autoPaint()/autoPaintLive() 的局部 DOM。
+   2. 每完成一章就落盘。断网、刷新、关页面后靠 DB.auto.cur 就能接着跑，
+      重进同一章时各子步骤都有「已做则跳过」的判断，所以重跑不会重复计费。
+   ================================================================== */
+const AUTO={running:false,stop:false,ctrl:null,label:'',live:'',reason:'',chapT0:0};
+
+function autoCfg(){
+  const a=DB.auto||{};
+  const num=(v,d,min,max)=>{
+    const n=Number(v);
+    return Number.isFinite(n)?Math.max(min,Math.min(max,Math.round(n))):d;
+  };
+  return {
+    mode:a.mode==='cont'?'cont':'new',
+    chapters:num(a.chapters,10,1,200),
+    words:num(a.words,3000,500,12000),
+    doArch:a.doArch!==false,
+    doOutline:a.doOutline!==false,
+    doSummary:a.doSummary!==false,
+    doFinalize:a.doFinalize!==false,
+    gap:num(a.gap,3,0,60)
+  };
+}
+/* 「接着写」从第一个没有正文的章节开始；全都有正文则从新的一章开始 */
+function autoStartFrom(cfg){
+  if(cfg.mode==='new') return 1;
+  for(let i=0;i<DB.chapters.length;i++){
+    if(!(DB.chapters[i].content||'').trim()) return i+1;
+  }
+  return DB.chapters.length+1;
+}
+function autoStage(stage,label){
+  DB.auto.stage=stage;
+  AUTO.label=label||'';
+  autoPaint();
+  autoPaintLive();
+}
+function autoStopCheck(){
+  if(AUTO.stop){
+    const e=new Error('已暂停');
+    e.name='AbortError';
+    throw e;
+  }
+}
+/* 可被「暂停」打断的等待 */
+function autoSleep(ms){
+  return new Promise(res=>{
+    const t0=Date.now();
+    const tick=()=>{
+      if(AUTO.stop) return res();
+      const left=ms-(Date.now()-t0);
+      if(left<=0) return res();
+      setTimeout(tick,Math.min(200,left));
+    };
+    tick();
+  });
+}
+/* 章节进度列表（V.auto 与 autoPaint 共用） */
+function autoListHtml(){
+  const c=DB.auto||{};
+  const running=!!AUTO.running;
+  return DB.chapters.map((x,i)=>{
+    const wc=countWords(x.content||'');
+    const isNow=running&&(i+1)===(c.cur||0);
+    const tag=wc? (x.status==='已定稿'?'<span class="chip done">定稿</span>':'<span class="chip draft">草稿</span>')
+                : '<span class="chip">待写</span>';
+    return `<div class="arow${isNow?' now':''}">
+      <span class="ano">${i+1}</span>
+      <span class="at">${esc(x.title||'（未命名）')}${isNow?' <span class="spin"></span>':''}</span>
+      <span class="aw">${wc?fmt(wc)+' 字':'—'}</span>
+      <span class="as">${tag}</span>
+    </div>`;
+  }).join('');
+}
+/* 只更新进度相关的 DOM 片段；页面上没有这些节点时静默跳过 */
+function autoPaint(){
+  const c=DB.auto||{};
+  const running=!!AUTO.running;
+  const total=(c.total||autoCfg().chapters||1);
+  const done=(c.history||[]).length;
+  const pct=c.state==='done'?100:Math.min(99,Math.round(done/total*100));
+
+  const st=document.getElementById('autoStage');
+  if(st){
+    if(running) st.innerHTML=`<span class="spin"></span> ${esc(AUTO.label||'准备中…')}`;
+    else{
+      const map={idle:'尚未开始',paused:'❚❚ 已暂停',error:'× 已中断',done:'✓ 已完成'};
+      st.textContent=map[c.state]||'尚未开始';
+    }
+  }
+  const hint=document.getElementById('autoHint');
+  if(hint) hint.textContent=running?'正在跑':(c.state==='idle'?'未在运行':'已停止');
+  const cnt=document.getElementById('autoCount');
+  if(cnt) cnt.textContent=`${done} / ${total} 章`;
+  const pe=document.getElementById('autoPct');
+  if(pe) pe.textContent=pct+'%';
+  const bar=document.getElementById('autoBar');
+  if(bar) bar.style.width=pct+'%';
+
+  const start=document.getElementById('btnAutoStart');
+  if(start){
+    start.disabled=running;
+    start.textContent=running?'运行中…'
+      :((c.state==='paused'||c.state==='error')?'重新开始（清空重写）':'开始一键成书');
+  }
+  const stopb=document.getElementById('btnAutoStop');
+  if(stopb) stopb.hidden=!running;
+  const resb=document.getElementById('btnAutoResume');
+  if(resb){
+    const can=!running&&(c.state==='paused'||c.state==='error')&&(c.cur>0);
+    resb.hidden=!can;
+    resb.textContent=`从第 ${c.cur||1} 章继续`;
+  }
+  const list=document.getElementById('autoList');
+  if(list&&DB.chapters.length) list.innerHTML=autoListHtml();
+}
+/* 流式输出期间的高频刷新：只碰两处文本，不重建任何结构 */
+function autoPaintLive(){
+  const t=AUTO.live||'';
+  const live=document.getElementById('autoLive');
+  if(live){
+    if(t){
+      live.textContent=t.length>1800?'…'+t.slice(-1800):t;
+      live.scrollTop=live.scrollHeight;
+    }else if(AUTO.reason){
+      live.textContent='模型正在思考…（已产出 '+fmt(countWords(AUTO.reason))+' 字思考内容）';
+    }
+  }
+  const s=document.getElementById('autoStats');
+  if(s){
+    const secs=AUTO.chapT0?Math.round((Date.now()-AUTO.chapT0)/1000):0;
+    s.innerHTML=`<span>${esc(AUTO.label||'')}</span>`+
+      (t?`<span>已写 ${fmt(countWords(t))} 字</span>`:'')+
+      (secs?`<span>已用 ${secs}s</span>`:'');
+  }
+}
+/* 单次调用：接到可中止的 controller，并把增量推给实时预览。
+   另带一个「静默看门狗」：无人值守跑几十章时，最难查的故障是连接假活着——
+   请求没报错，但一个字都不再回来。超过 3 分钟没有任何输出就主动掐断。 */
+const AUTO_IDLE_MS=180000;
+async function autoCall(taskKey,prompt,label){
+  const ctrl=new AbortController();
+  AUTO.ctrl=ctrl;
+  AUTO.label=label;
+  AUTO.live='';AUTO.reason='';
+  let text='',last=0,lastAt=Date.now(),stalled=false;
+  const wd=setInterval(()=>{
+    if(Date.now()-lastAt>AUTO_IDLE_MS){
+      stalled=true;
+      try{ ctrl.abort(); }catch(e){}
+    }
+  },5000);
+  try{
+    const out=await callAI({
+      taskKey,prompt,signal:ctrl.signal,
+      onDelta:d=>{
+        text+=d;
+        lastAt=Date.now();
+        const now=Date.now();
+        if(now-last>240){ last=now; AUTO.live=text; autoPaintLive(); }
+      },
+      onReason:r=>{ lastAt=Date.now(); AUTO.reason=r; autoPaintLive(); }
+    });
+    if(!text&&out) text=out;
+    AUTO.live=text;          // 非流式回退时，这一句让结果至少能露一次面
+    autoPaintLive();
+    return text;
+  }catch(err){
+    if(stalled&&!AUTO.stop){
+      throw new Error(`${label}：模型 ${Math.round(AUTO_IDLE_MS/60000)} 分钟没有任何输出，判定连接卡死并已中断。\n\n`+
+        `点「继续」会从这一章重试。若反复卡住，换一个模型，或把「章间间隔」调大一些。`);
+    }
+    throw err;
+  }finally{
+    clearInterval(wd);
+    AUTO.ctrl=null;
+  }
+}
+function stopAuto(){
+  if(!AUTO.running){ toast('当前没有在跑的任务'); return; }
+  AUTO.stop=true;
+  if(AUTO.ctrl){ try{ AUTO.ctrl.abort(); }catch(e){} }
+  toast('正在暂停…');
+  const st=document.getElementById('autoStage');
+  if(st) st.innerHTML='<span class="spin"></span> 正在停下来…';
+}
+
+async function runAuto(resume){
+  if(AUTO.running){ toast('任务正在运行中'); return; }
+
+  const cfg=autoCfg();
+  const c=DB.auto;
+
+  if(!activeCfg('draft_llm')){
+    alert('还没有可用的模型配置。\n\n请先到「模型配置」选择预设、填入 API Key 并保存。');
+    return;
+  }
+  { /* 具体到「草稿生成」这条路由用哪套配置，免得跑到一半才报 Key 为空 */
+    const a0=activeCfg('draft_llm');
+    const localA=/ollama/i.test(a0.cfg.interface_format||'');
+    if(!localA&&!sanitizeKey(a0.cfg.api_key)){
+      alert(`任务「草稿生成」指向的配置「${a0.name}」还没有填 API Key。\n\n请到「模型配置」填写并保存，或把「草稿生成」改派给别的配置。`);
+      return;
+    }
+  }
+  if(!resume){
+    const withBody=DB.chapters.filter(x=>(x.content||'').trim()).length;
+    if(cfg.mode==='new'&&withBody){
+      if(!confirm(`「重开一本」会清空当前 ${DB.chapters.length} 章（其中 ${withBody} 章已有正文），整本重写。\n\n`+
+        `确定继续吗？建议先到仪表盘导出 JSON 备份。`)) return;
+    }
+    if(!confirm(`即将连续生成 ${cfg.chapters} 章 × 约 ${cfg.words} 字，预计 ${Math.ceil(cfg.chapters*2.2)} 分钟。\n\n`+
+      `运行中可以随时暂停；已写完的章节都会保留，关掉网页也能从断点继续。\n\n开始吗？`)) return;
+  }
+
+  AUTO.running=true; AUTO.stop=false;
+  AUTO.live=''; AUTO.reason=''; AUTO.chapT0=0;
+
+  if(!resume){
+    c.history=[];
+    c.startedAt=nowIso(); c.finishedAt='';
+    c.total=cfg.chapters;
+    if(cfg.mode==='new'){ DB.chapters=[]; DB.theme._arch=''; }
+    c.cur=autoStartFrom(cfg);
+  }else{
+    c.total=c.total||cfg.chapters;
+  }
+  const total=Math.max(1,Math.min(c.total||cfg.chapters,200));
+  c.state='running'; c.msg=''; c.stage='';
+  DB.theme._wordTarget=cfg.words;
+  save(); buildNav(); autoPaint();
+
+  try{
+    /* ---- 1. 总架构 ----
+       续跑时不再碰架构/大纲：那两步只属于「开跑前」，重跑会把已经写好的
+       章节表连同正文一起冲掉。 */
+    if(!resume&&cfg.doArch&&!(DB.theme._arch||'').trim()){
+      autoStage('arch','正在生成总架构');
+      const t=await autoCall('architecture_llm',P.architecture(),'总架构');
+      autoStopCheck();
+      if(!String(t||'').trim()) throw new Error('架构返回为空（模型没有给出内容）');
+      DB.theme._arch=String(t).trim();
+      log(`[一键成书] 架构完成，${countWords(DB.theme._arch)} 字`);
+      save(); autoPaint();
+    }
+    autoStopCheck();
+
+    /* ---- 2. 章节大纲 ---- */
+    if(!resume&&cfg.doOutline&&cfg.mode==='new'){
+      autoStage('outline',`正在设计 ${total} 章大纲`);
+      const t=await autoCall('outline_llm',P.outline(total),'章节大纲');
+      autoStopCheck();
+      const parsed=parseOutlineText(t);
+      if(parsed.length){
+        writeOutlineParsed(parsed,'replace');
+        log(`[一键成书] 大纲解析出 ${parsed.length} 章`);
+      }else{
+        log('[一键成书] 大纲格式无法解析，改用空标题继续');
+      }
+    }
+
+    /* 章节数对齐目标 */
+    while(DB.chapters.length<total) DB.chapters.push({title:'',summary:'',status:'待写',content:''});
+    if(cfg.mode==='new'&&DB.chapters.length>total) DB.chapters=DB.chapters.slice(0,total);
+    save(); autoPaint();
+    autoStopCheck();
+
+    /* ---- 3. 逐章 ---- */
+    const end=Math.min(total,DB.chapters.length);
+    for(let i=Math.max(0,(c.cur||1)-1); i<end; i++){
+      autoStopCheck();
+      const ch=DB.chapters[i], no=i+1;
+      c.cur=no; save(); autoPaint();
+
+      /* 3.1 正文 */
+      if(!(ch.content||'').trim()){
+        AUTO.chapT0=Date.now(); AUTO.live=''; AUTO.reason='';
+        autoStage('draft',`正在写第 ${no} 章${ch.title?`《${ch.title}》`:''}`);
+        const t=await autoCall('draft_llm',P.chapter(no,ch.guide||''),`第 ${no} 章正文`);
+        autoStopCheck();
+        const body=String(t||'').trim();
+        if(!body) throw new Error(`第 ${no} 章返回为空（模型没给正文）。`);
+        ch.content=body; ch.status='草稿';
+        const secs=Math.round((Date.now()-AUTO.chapT0)/1000);
+        if(!Array.isArray(c.history)) c.history=[];
+        c.history.push({no,title:ch.title||'',chars:countWords(body),secs,at:nowIso()});
+        if(c.history.length>300) c.history=c.history.slice(-300);
+        log(`[一键成书] 第 ${no} 章完成，${countWords(body)} 字（${secs}s）`);
+        save(); autoPaint();
+      }
+
+      /* 3.2 摘要 —— 必须在本章之后、下一章之前 */
+      if(cfg.doSummary&&!(ch.sum||'').trim()&&(ch.content||'').trim()){
+        autoStage('summary',`正在整理第 ${no} 章的摘要`);
+        const s=await autoCall('summary_llm',P.chapterSum(ch.content,no,ch.title||''),`第 ${no} 章摘要`);
+        autoStopCheck();
+        ch.sum=cleanReviseText(String(s||''));
+        if(ch.sum) ch.sumUpdated=nowIso();
+        save(); autoPaint();
+      }
+
+      /* 3.3 定稿 */
+      if(cfg.doFinalize&&(ch.content||'').trim()){ ch.status='已定稿'; save(); }
+
+      /* 3.4 间隔，避开限流 */
+      if(cfg.gap>0&&i<end-1){
+        autoStage('gap',`第 ${no} 章已完成，${cfg.gap} 秒后继续`);
+        await autoSleep(cfg.gap*1000);
+      }
+    }
+
+    autoStopCheck();
+    c.state='done'; c.stage='done'; c.finishedAt=nowIso();
+    c.cur=end||total;
+    log(`[一键成书] 全部完成，共 ${(c.history||[]).length} 章，${fmt(DB.chapters.reduce((s,x)=>s+countWords(x.content||''),0))} 字`);
+  }catch(err){
+    if(AUTO.stop||(err&&err.name==='AbortError')){
+      c.state='paused'; c.stage=''; c.msg='已暂停';
+      log('[一键成书] 已暂停');
+    }else{
+      c.state='error'; c.stage='';
+      c.msg=String((err&&err.message)||err).slice(0,800);
+      log('[一键成书] 中断：'+c.msg.split('\n')[0]);
+    }
+  }finally{
+    AUTO.running=false; AUTO.stop=false; AUTO.ctrl=null;
+    AUTO.live=''; AUTO.reason=''; AUTO.label=''; AUTO.chapT0=0;
+    save();
+    if(route==='auto'||route==='dash') render(); else buildNav();
+    toast(c.state==='done'?'全部完成':c.state==='error'?'已中断，可点继续':'已暂停，可点继续');
+  }
+}
+
+/* ==================================================================
    7. 导出
    ================================================================== */
 function download(name,text,mime='text/plain'){
@@ -3990,13 +4546,19 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-/* --- 启动自检：存储不可用 / 从备份恢复，都必须让用户知道 --- */
+/* --- 启动自检：存储不可用 / 从备份恢复 / 一键成书上次被中断，都必须让用户知道 --- */
 (function bootCheck(){
   if(!STORAGE.ok){
     setSaveState('fail',storageBlockNote());
   }else if(DB._recovered){
     toast('主数据损坏，已从上一版备份恢复');
     log('检测到主存储异常，已自动回退到备份快照');
+  }
+  /* 页面被关掉时任务必然停在 running —— 转成 paused，界面上就能看到「继续」 */
+  if(DB.auto&&DB.auto.state==='running'){
+    DB.auto.state='paused';
+    DB.auto.msg='上次运行在页面关闭时中断';
+    log('[一键成书] 检测到未完成任务，已标记为暂停');
   }
 })();
 
